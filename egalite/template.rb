@@ -1,0 +1,161 @@
+require 'jcode'
+
+module Egalite
+
+class CleanString < String
+end
+
+class HTMLTemplate
+  RE_GROUP = /<group\s+name=['"](.+?)['"]>/i
+  RE_ENDGROUP = /<\/group>/i
+  RE_IF = /<if\s+name=['"](.+?)['"]>/i
+  RE_ENDIF = /<\/if>/i
+  RE_UNLESS = /<unless\s+name=['"](.+?)['"]>/i
+  RE_ENDUNLESS = /<\/unless>/i
+  RE_PLACE = /&=([-_0-9a-zA-Z]+?);/
+  RE_INPUT = /<input\s+(.+?)>/im
+  RE_SELECT = /<select\s+name\s*=\s*['"](.+?)['"](.*?)>\s*<\/select>/im
+
+  RE_INCLUDE = /<include\s+name=['"](.+?)['"]\s*\/>/i
+  RE_PARENT = /<parent\s+name=['"](.+?)['"]\s*\/>/i
+  RE_YIELD = /<yield\/>/i
+  
+  attr_accessor :controller, :default_escape
+  
+  def initialize
+    @default_escape = true
+    @controller = nil
+  end
+  
+  def parse_tag_attributes(attrs)
+    a = attrs.split(/(\w+(!:[^=])|\w+=(?:'[^']+'|"[^"]+"|\S+))\s*/)
+    a = a.select { |s| s != "" }
+    hash = {}
+    a.each { |s|
+      b = s.split('=',2)
+      b[0].sub!(/\s$/,'')
+      b[1] = b[1][1..-2] if b[1] and (b[1][0,1] == '"' or b[1][0,1] == "'")
+      hash[b[0]] = b[1] || true
+    }
+    hash
+  end
+  
+  def escapeHTML(s)
+    return "" if (s == nil)
+    s = s.to_s if (not s.is_a?(String))
+    s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+  end
+  
+  def handleNestedTag(html) # cut after endgroup tag
+    while md1 = RE_GROUP.match(html)
+      break if (RE_ENDGROUP.match(md1.pre_match))
+      html = handleNestedTag(md1.post_match)
+    end
+    RE_ENDGROUP.match(html).post_match
+  end
+
+  def handleTemplate(html,orig_values)
+    params = lambda { |k| orig_values[k] || orig_values[k.to_sym] }
+    
+    # parse group tag and delegate inner loop
+    while md1 = RE_GROUP.match(html) # beware: complicated....
+      break if (RE_ENDGROUP.match(md1.pre_match))
+      groupval = params[md1[1]]
+      groupval = [] if (groupval == nil)
+      groupval = [groupval] unless (groupval.is_a?(Array))
+      innertext = ""
+      post = handleNestedTag(md1.post_match)
+      groupval.each { |v| innertext += handleTemplate(md1.post_match,v) }
+      # replace this group tag
+      html[md1.begin(0),html.length] = innertext + post
+    end
+    # cut after end tag
+    md1 = RE_ENDGROUP.match(html)
+    html = md1.pre_match if (md1)
+
+    # parse if tag (no nested tag is supported.)
+    while md1 = RE_IF.match(html)
+      pmd = params[md1[1]]
+      unless pmd.blank?
+        html.sub!(RE_IF,"")
+        html.sub!(RE_ENDIF,"")
+      else
+        md2 = RE_ENDIF.match(html)
+        html[md1.begin(0),md2.end(0) - md1.begin(0)] = ""
+      end
+    end
+    while md1 = RE_UNLESS.match(html)
+      pmd = params[md1[1]]
+      if pmd.blank?
+        html.sub!(RE_UNLESS,"")
+        html.sub!(RE_ENDUNLESS,"")
+      else
+        md2 = RE_ENDUNLESS.match(html)
+        html[md1.begin(0),md2.end(0) - md1.begin(0)] = ""
+      end
+    end
+
+    # parse place holder
+    html.gsub!(RE_PLACE) {
+      key = $1
+      if key =~ /([a-z0-9_]+)\((.*?)\)/
+        @controller.send("_#{$1}",$2)
+      else
+        next params[key] if params[key].is_a?(CleanString) or not @default_escape
+        escapeHTML(params[key])
+      end
+    }
+    
+    # parse input tag type=text
+    # todo: checkedやvalueが既にあるときにデフォルトとして扱うように
+    html.gsub!(RE_INPUT) { |s|
+      attrs = parse_tag_attributes($1)
+      name = attrs['name']
+      case attrs['type']
+        when 'text'
+          s.sub(/>$/," value='"+escapeHTML(params[name])+"'>")
+        when 'radio'
+          s.sub(/>$/," checked>") if (params[name] == attrs['value'])
+        when 'checkbox'
+          s.sub(/>$/," checked>") if (params[name] == attrs['value'])
+        else
+          s
+      end
+    }
+
+    # parse select tag
+    html.gsub!(RE_SELECT) { sel = "<select name='#$1'#$2>"
+      if (params[$1] and params[$1].is_a?(Array))
+        params[$1].each_index() { |key|
+          next if (key == 0)
+          selected = " selected" if params[$1][0] == key
+          value = params[$1][key]
+          sel += "<option value='#{key}'#{selected}>"
+          sel += escapeHTML(value)
+          sel += "</option>" unless @keitai
+        }
+      end
+      sel += "</select>"
+    }
+
+    # parse include tag
+    if block_given?
+      html.gsub!(RE_INCLUDE) {
+        yield($1)
+      }
+      parent = nil
+      md = RE_PARENT.match(html)
+      parent = md[1] if md
+      html.gsub!(RE_PARENT,"")
+      if parent
+        txt = yield(parent)
+        txt.gsub!(RE_YIELD, html)
+        html = txt
+      end
+    end
+
+    html
+  end
+end
+
+end # end module
