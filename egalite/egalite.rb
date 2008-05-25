@@ -194,10 +194,10 @@ class Handler
     Rack::Response.new(html.join("\n"),500)
   end
   
-  def handle_egalite_response(result)
+  def handle_egalite_response(values)
     case values.command
       when :delegate
-        dispatch(values.param,values) # ‚¤‚Ü‚­‚¢‚­?
+        dispatch(values.param,values) # todo: ‚Ü‚¾‚Å‚«‚Ä‚È‚¢
       when :redirect
         redirect(values.param)
       when :template
