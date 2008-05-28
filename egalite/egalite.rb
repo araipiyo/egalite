@@ -21,13 +21,8 @@ class Logger
 end
 
 class Controller
-  def initialize(env)
-    @env = env
-  end
-  def setup(params)
-    @params = params
-  end
-  
+  attr_accessor :env, :params, :template_file
+
   # filters
   def before_filter
     true
@@ -37,9 +32,6 @@ class Controller
   end
   
   # accessors
-  def params
-    @params
-  end
   def db
     @env.db
   end
@@ -74,6 +66,9 @@ class Controller
   end
   def link_to(title,prms)
     @env.route.link_to(title,prms)
+  end
+  def raw(text)
+    NonEscapeString.new(text)
   end
 end
 
@@ -149,7 +144,7 @@ class Handler
     action = method if action.blank?
     action.downcase!
     action.gsub!(/[^0-9a-z_]/,'')
-    Controller.new(@env).methods.each { |s| raise CrackAttempt if action == s }
+    Controller.new.methods.each { |s| raise CrackAttempt if action == s }
     
     controllername ||= ''
     controllername = controllername.split('/').map { |c|
@@ -166,7 +161,7 @@ class Handler
       return nil
     end
     
-    controller = kontroller.new(@env)
+    controller = kontroller.new
     
     unless controller.respond_to?(action)
       if controller.respond_to?("#{action}_#{method}")
@@ -251,48 +246,49 @@ class Handler
     # todo: session handling (by pathinfo?)
       
       
-    # dispatch
-      # controller
-      controller.setup(params)
-      
-      before_filter_result = controller.before_filter
-      if before_filter_result != true
-        response = handle_egalite_response(before_filter_result)
-        set_cookies_to_response(response)
-        return response
+    # controller
+    controller.env = @env
+    controller.params = params
+    
+    before_filter_result = controller.before_filter
+    if before_filter_result != true
+      response = handle_egalite_response(before_filter_result)
+      set_cookies_to_response(response)
+      return response
+    end
+    
+    nargs = controller.method(action).arity
+    args = []
+    args = path_params[0,nargs.abs] || []
+    if nargs > 0
+      args.size.upto(nargs-1) { args << nil }
+    end
+    values = controller.send(action,*args)
+    
+    # result handling
+    result = if values.respond_to?(:command)
+      handle_egalite_response(values)
+    elsif values.is_a?(String)
+      Rack::Response.new(values,200)
+    elsif values.is_a?(Rack::Response)
+      values
+    else
+      htmlfile = if controller.template_file
+        controller.template_file
+      else
+        ([@env.controller,@env.action].compact.join('_') || 'index')+'.html'
       end
-      
-      nargs = controller.method(action).arity
-      args = []
-      args = path_params[0,nargs.abs] || []
-      if nargs > 0
-        args.size.upto(nargs-1) { args << nil }
-      end
-      values = controller.send(action,*args)
-      
-      # result handling
-      result = if values.respond_to?(:command)
-        handle_egalite_response(values)
-      elsif values.is_a?(String)
-        Rack::Response.new(values,200)
-      elsif values.is_a?(Rack::Response)
-        values
-      else # Hash response
-        htmlfile = ''
-        htmlfile += @env.controller + '/' if @env.controller
-        htmlfile += @env.action || @env.method
-        htmlfile += '.html'
-        html = load_template(@template_path + htmlfile)
-        # apply html template
-        template = HTMLTemplate.new
-        template.controller = controller
-        template.handleTemplate(html,values) { |path,values|
-          dispatch(path,values) # recursive call to handle 'include' tag.
-        }
-        Rack::Response.new(html,200)
-      end
-      set_cookies_to_response(result)
-      return result
+      html = load_template(@template_path + htmlfile)
+      # apply html template
+      template = HTMLTemplate.new
+      template.controller = controller
+      template.handleTemplate(html,values) { |path,values|
+        dispatch(path,values) # recursive call to handle 'include' tag.
+      }
+      Rack::Response.new(html,200)
+    end
+    set_cookies_to_response(result)
+    return result
   end
 
   def call(rack_env)

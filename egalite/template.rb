@@ -2,7 +2,7 @@ require 'jcode'
 
 module Egalite
 
-class CleanString < String
+class NonEscapeString < String
 end
 
 class HTMLTemplate
@@ -15,6 +15,8 @@ class HTMLTemplate
   RE_PLACE = /&=([-_0-9a-zA-Z]+?);/
   RE_INPUT = /<input\s+(.+?)>/im
   RE_SELECT = /<select\s+name\s*=\s*['"](.+?)['"](.*?)>\s*<\/select>/im
+  
+  RE_A = /<a\s+(.+?)>/im
 
   RE_INCLUDE = /<include\s+name=['"](.+?)['"]\s*\/>/i
   RE_PARENT = /<parent\s+name=['"](.+?)['"]\s*\/>/i
@@ -41,9 +43,7 @@ class HTMLTemplate
   end
   
   def escapeHTML(s)
-    return "" if (s == nil)
-    s = s.to_s if (not s.is_a?(String))
-    s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+    s.to_s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
   end
   
   def handleNestedTag(html) # cut after endgroup tag
@@ -65,7 +65,7 @@ class HTMLTemplate
       groupval = [groupval] unless (groupval.is_a?(Array))
       innertext = ""
       post = handleNestedTag(md1.post_match)
-      groupval.each { |v| innertext += handleTemplate(md1.post_match,v) }
+      groupval.each { |v| innertext << handleTemplate(md1.post_match,v) }
       # replace this group tag
       html[md1.begin(0),html.length] = innertext + post
     end
@@ -98,12 +98,8 @@ class HTMLTemplate
     # parse place holder
     html.gsub!(RE_PLACE) {
       key = $1
-      if key =~ /([a-z0-9_]+)\((.*?)\)/
-        @controller.send("_#{$1}",$2)
-      else
-        next params[key] if params[key].is_a?(CleanString) or not @default_escape
-        escapeHTML(params[key])
-      end
+     next params[key] if params[key].is_a?(NonEscapeString) or not @default_escape
+      escapeHTML(params[key])
     }
     
     # parse input tag type=text
@@ -123,6 +119,14 @@ class HTMLTemplate
       end
     }
 
+    # link tag
+    html.gsub!(RE_A) { |s|
+      attrs = parse_tag_attributes($1)
+      attrs = StringifyHash.create(attrs)
+      link = @controller.url_for(attrs)
+      "<a href='#{link}'>"
+    }
+
     # parse select tag
     html.gsub!(RE_SELECT) { sel = "<select name='#$1'#$2>"
       if (params[$1] and params[$1].is_a?(Array))
@@ -130,12 +134,12 @@ class HTMLTemplate
           next if (key == 0)
           selected = " selected" if params[$1][0] == key
           value = params[$1][key]
-          sel += "<option value='#{key}'#{selected}>"
-          sel += escapeHTML(value)
-          sel += "</option>" unless @keitai
+          sel << "<option value='#{key}'#{selected}>"
+          sel << escapeHTML(value)
+          sel << "</option>" unless @keitai
         }
       end
-      sel += "</select>"
+      sel << "</select>"
     }
 
     # parse include tag

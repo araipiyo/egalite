@@ -10,6 +10,19 @@ class Route
     routes = []
     routes << Route.new([
       [:controller],
+      [:controller],
+      [:action],
+      [:param_arg, :id],
+      [:params]
+    ])
+    routes << Route.new([
+      [:controller],
+      [:controller],
+      [:param_arg, :id],
+      [:params]
+    ])
+    routes << Route.new([
+      [:controller],
       [:action],
       [:param_arg, :id],
       [:params]
@@ -102,10 +115,10 @@ class Route
           if params[:controller] == nil
             pathary += contfrags
           elsif params[:controller] =~ /^\//
-            pathary << params[:controller]
+            pathary += params[:controller].split('/')
           else
             pathary += contfrags[0..-2]
-            pathary << params[:controller]
+            pathary += params[:controller].split('/')
           end
           controller_exist = pathary.size
           params.delete(:controller)
@@ -145,7 +158,7 @@ class Route
       params.delete(:action)
     end
     if not controller_exist and params[:controller]
-      pathary.unshift(params[:controller])
+      pathary.unshift(params[:controller].split('/'))
       params.delete(:controller)
     end
     pathary = pathary.compact.map { |frag| escape(frag) }
