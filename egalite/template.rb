@@ -57,7 +57,7 @@ class HTMLTemplate
   def handleTemplate(html,orig_values)
     params = lambda { |k| orig_values[k] || orig_values[k.to_sym] }
     
-    # parse group tag and delegate inner loop
+    # parse group tag and recurse inner loop
     while md1 = RE_GROUP.match(html) # beware: complicated....
       break if (RE_ENDGROUP.match(md1.pre_match))
       groupval = params[md1[1]]
@@ -73,7 +73,7 @@ class HTMLTemplate
     md1 = RE_ENDGROUP.match(html)
     html = md1.pre_match if (md1)
 
-    # parse if tag (no nested tag is supported.)
+    # parse <if> tag (nested tag is not supported.)
     while md1 = RE_IF.match(html)
       pmd = params[md1[1]]
       unless pmd.blank?
@@ -103,25 +103,25 @@ class HTMLTemplate
     }
     
     # parse input tag type=text
-    # todo: checkedやvalueが既にあるときにデフォルトとして扱うように
     html.gsub!(RE_INPUT) { |s|
       attrs = parse_tag_attributes($1)
+      next s if attrs['value'] || attrs['checked'] || attrs['selected']
       name = attrs['name']
       case attrs['type']
         when 'text'
-          s.sub(/>$/," value='"+escapeHTML(params[name])+"'>")
+         s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
         when 'radio'
-          s.sub(/>$/," checked>") if (params[name] == attrs['value'])
+          s.sub!(/\/?>$/," checked/>") if (params[name] == attrs['value'])
         when 'checkbox'
-          s.sub(/>$/," checked>") if (params[name] == attrs['value'])
-        else
-          s
+          s.sub!(/\/?>$/," checked/>") if params[name]
       end
+      s
     }
 
     # link tag
     html.gsub!(RE_A) { |s|
       attrs = parse_tag_attributes($1)
+      next s if attrs['href']
       attrs = StringifyHash.create(attrs)
       link = @controller.url_for(attrs)
       "<a href='#{link}'>"

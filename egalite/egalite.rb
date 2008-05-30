@@ -8,6 +8,7 @@ require 'stringify_hash'
 require 'template'
 require 'route'
 require 'session'
+require 'helper'
 
 module Egalite
 
@@ -65,10 +66,16 @@ class Controller
     @env.route.url_for(prms)
   end
   def link_to(title,prms)
-    @env.route.link_to(title,prms)
+    raw(@env.route.link_to(title,prms))
   end
   def raw(text)
     NonEscapeString.new(text)
+  end
+  def table_by_array(header,content,opts={})
+    TableHelper.table_by_array(header,content,opts)
+  end
+  def form(data={},param_name = nil)
+    FormHelper.new(data,param_name)
   end
 end
 
@@ -162,6 +169,7 @@ class Handler
     end
     
     controller = kontroller.new
+    method = method.downcase
     
     unless controller.respond_to?(action)
       if controller.respond_to?("#{action}_#{method}")
