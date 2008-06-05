@@ -333,7 +333,14 @@ class Handler
       
       # todo: language handling (by cookie/header)
       
+      
       res = dispatch(req.path_info, params, req.request_method)
+      
+      if res.status == 200
+        unless res['Content-Type'] =~ /charset/i
+          res["Content-Type"] = @opts[:charset] || 'text/html; charset=utf-8'
+        end
+      end
       
     rescue Exception => e
       begin
