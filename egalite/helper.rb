@@ -15,10 +15,7 @@ class TableHelper
       head = header.map {|s| "<th>#{escape_html(s)}</th>" }.join
       head = "  <tr>#{head}</tr>\n"
     end
-    body = content.map { |line|
-      l = yield(line)
-      "  <tr>#{l}</tr>\n"
-    }
+    body = content.map { |line| "  <tr>#{yield(line)}</tr>\n" }
     NonEscapeString.new("<table#{opt(table_opts)}>\n#{head}#{body}</table>")
   end
  public
@@ -54,13 +51,14 @@ class FormHelper
   end
 
  public
-  def initialize(data = {}, param_name = nil)
+  def initialize(data = {}, param_name = nil, opts = {})
     @data = data
     @param_name = param_name
+    @form_opts = opts
   end
   def form(method, url=nil)
     action = url ? " action='#{escape_html(url)}'" : ''
-    raw "<form method='#{escape_html(method)}'#{action}>"
+    raw "<form method='#{escape_html(method)}'#{action}#{opt(@form_opts)}>"
   end
   def text(name, opts = {})
     value = @data[name] || opts[:default]
@@ -92,6 +90,9 @@ class FormHelper
   def textarea(name, opts = {})
     value = escape_html(@data[name] || opts[:default])
     raw "<textarea name='#{expand_name(name)}'#{opt(opts)}>#{value}</textarea>"
+  end
+  def file(name, opts = {})
+    raw "<input type='file' name='#{expand_name(name)}'#{opt(opts)}/>"
   end
   def submit(value = nil, name = nil, opts = {})
     name = " name='#{expand_name(name)}'" if name
