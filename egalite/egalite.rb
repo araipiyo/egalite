@@ -23,6 +23,7 @@ end
 
 class Controller
   attr_accessor :env, :params, :template_file
+  undef id
 
   # filters
   def before_filter
@@ -60,6 +61,9 @@ class Controller
     url = url_for(url) if url.is_a?(Hash)
     EgaliteResponse.new(:delegate, url)
   end
+  def send_data(data, content_type)
+    Rack::Response.new(data,200,{"Content-Type" => content_type})
+  end
   
   # helpers
   def url_for(prms)
@@ -74,8 +78,11 @@ class Controller
   def table_by_array(header,content,opts={})
     TableHelper.table_by_array(header,content,opts)
   end
-  def form(data={},param_name = nil)
-    FormHelper.new(data,param_name)
+  def form(data={},param_name = nil, opts = {})
+    FormHelper.new(data,param_name,opts)
+  end
+  def file_form(data={},param_name = nil, opts = {})
+    FormHelper.new(data,param_name,opts.merge(:enctype => 'multipart/form-data'))
   end
 end
 
@@ -337,7 +344,7 @@ class Handler
       res = dispatch(req.path_info, params, req.request_method)
       
       if res.status == 200
-        unless res['Content-Type'] =~ /charset/i
+        if res['Content-Type'] !~ /charset/i and res['Content-Type'] =~ /text\/html/i
           res["Content-Type"] = @opts[:charset] || 'text/html; charset=utf-8'
         end
       end
