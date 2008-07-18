@@ -61,6 +61,23 @@ class Controller
     url = url_for(url) if url.is_a?(Hash)
     EgaliteResponse.new(:delegate, url)
   end
+  def send_file(path, content_type = nil)
+    ext = File.extname(path)[1..-1]
+
+    if File.file?(path) && File.readable?(path)
+      s = nil
+      open(path, "rb") { |file|
+        s = file.read
+      }
+      return [200, {
+         "Last-Modified"  => File.mtime(path).rfc822,
+         "Content-Type"   => content_type || MIME_TYPES[ext] || "text/plain",
+         "Content-Length" => File.size(path).to_s
+       }, s]
+    else
+      return [404, {"Content-Type" => "text/plain"}, ["File not found\n"]]
+    end
+  end
   def send_data(data, content_type)
     Rack::Response.new(data,200,{"Content-Type" => content_type})
   end
@@ -84,6 +101,64 @@ class Controller
   def file_form(data={},param_name = nil, opts = {})
     FormHelper.new(data,param_name,opts.merge(:enctype => 'multipart/form-data'))
   end
+
+  # From WEBrick.
+  MIME_TYPES = {
+    "ai"    => "application/postscript",
+    "asc"   => "text/plain",
+    "avi"   => "video/x-msvideo",
+    "bin"   => "application/octet-stream",
+    "bmp"   => "image/bmp",
+    "class" => "application/octet-stream",
+    "cer"   => "application/pkix-cert",
+    "crl"   => "application/pkix-crl",
+    "crt"   => "application/x-x509-ca-cert",
+   #"crl"   => "application/x-pkcs7-crl",
+    "css"   => "text/css",
+    "dms"   => "application/octet-stream",
+    "doc"   => "application/msword",
+    "dvi"   => "application/x-dvi",
+    "eps"   => "application/postscript",
+    "etx"   => "text/x-setext",
+    "exe"   => "application/octet-stream",
+    "gif"   => "image/gif",
+    "htm"   => "text/html",
+    "html"  => "text/html",
+    "jpe"   => "image/jpeg",
+    "jpeg"  => "image/jpeg",
+    "jpg"   => "image/jpeg",
+    "js"    => "text/javascript",
+    "lha"   => "application/octet-stream",
+    "lzh"   => "application/octet-stream",
+    "mov"   => "video/quicktime",
+    "mpe"   => "video/mpeg",
+    "mpeg"  => "video/mpeg",
+    "mpg"   => "video/mpeg",
+    "pbm"   => "image/x-portable-bitmap",
+    "pdf"   => "application/pdf",
+    "pgm"   => "image/x-portable-graymap",
+    "png"   => "image/png",
+    "pnm"   => "image/x-portable-anymap",
+    "ppm"   => "image/x-portable-pixmap",
+    "ppt"   => "application/vnd.ms-powerpoint",
+    "ps"    => "application/postscript",
+    "qt"    => "video/quicktime",
+    "ras"   => "image/x-cmu-raster",
+    "rb"    => "text/plain",
+    "rd"    => "text/plain",
+    "rtf"   => "application/rtf",
+    "sgm"   => "text/sgml",
+    "sgml"  => "text/sgml",
+    "tif"   => "image/tiff",
+    "tiff"  => "image/tiff",
+    "txt"   => "text/plain",
+    "xbm"   => "image/x-xbitmap",
+    "xls"   => "application/vnd.ms-excel",
+    "xml"   => "text/xml",
+    "xpm"   => "image/x-xpixmap",
+    "xwd"   => "image/x-xwindowdump",
+    "zip"   => "application/zip",
+  }
 end
 
 class EgaliteError < RuntimeError
@@ -101,8 +176,8 @@ class EgaliteResponse
 end
 
 class Environment
-  attr_accessor :session, :language, :cookies
-  attr_accessor :route, :controller, :action, :params
+  attr_accessor :session, :language, :cookies, :opts
+  attr_accessor :route, :controller, :action, :params, :path, :path_params
   attr_reader :db, :method
 
   def initialize(db,method)
@@ -124,6 +199,7 @@ class Handler
 
     @db = opts[:db]
     @opts = opts
+    @opts[:static_root] ||= "static/"
 
     @logger = Logger.new
     
@@ -137,7 +213,11 @@ class Handler
  private
   def load_template(tmpl)
     # to expand: template caching
-    open(tmpl) { |f| f.read }
+    if File.file?(tmpl) && File.readable?(tmpl)
+      open(tmpl) { |f| f.read }
+    else
+      nil
+    end
   end
 
   def escape_html(s)
@@ -255,6 +335,8 @@ class Handler
     @env.route = route
     @env.controller = controller_name
     @env.action = action_name
+    @env.path_params = path_params
+    @env.path = path_params.join('/')
 
     # todo: language handling (by pathinfo?)
       
@@ -283,6 +365,8 @@ class Handler
     # result handling
     result = if values.respond_to?(:command)
       handle_egalite_response(values)
+    elsif values.is_a?(Array)
+      values
     elsif values.is_a?(String)
       Rack::Response.new(values,200)
     elsif values.is_a?(Rack::Response)
@@ -291,9 +375,12 @@ class Handler
       htmlfile = if controller.template_file
         controller.template_file
       else
-        ([@env.controller,@env.action].compact.join('_') || 'index')+'.html'
+        s = [@env.controller,@env.action].compact.join('_')
+        s = 'index' if s.blank?
+        s + '.html'
       end
       html = load_template(@template_path + htmlfile)
+      return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
       # apply html template
       template = HTMLTemplate.new
       template.controller = controller
@@ -332,6 +419,7 @@ class Handler
       
       @env.params = params
       @env.cookies = req.cookies
+      @env.opts = @opts
       
       if @opts[:session_handler]
         @env.session=@opts[:session_handler].new(@env,@opts[:session_opts] || {})
@@ -342,10 +430,11 @@ class Handler
       
       
       res = dispatch(req.path_info, params, req.request_method)
+      res = res.to_a
       
-      if res.status == 200
-        if res['Content-Type'] !~ /charset/i and res['Content-Type'] =~ /text\/html/i
-          res["Content-Type"] = @opts[:charset] || 'text/html; charset=utf-8'
+      if res[0] == 200
+        if res[1]['Content-Type'] !~ /charset/i and res[1]['Content-Type'] =~ /text\/html/i
+          res[1]["Content-Type"] = @opts[:charset] || 'text/html; charset=utf-8'
         end
       end
       
@@ -377,3 +466,16 @@ class Handler
 end
 
 end # module end
+
+class StaticController < Egalite::Controller
+  def get
+    puts "hoge"
+  
+    path = env.path
+    if path.include?("..") or path =~ /^\//
+      return [403, {"Content-Type" => "text/plain"}, ["Forbidden\n"]]
+    end
+    path = File.join(env.opts[:static_root], path)
+    send_file(path)
+  end
+end

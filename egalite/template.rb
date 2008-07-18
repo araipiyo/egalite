@@ -3,6 +3,9 @@ require 'jcode'
 module Egalite
 
 class NonEscapeString < String
+  def +(b)
+    b.is_a?(NonEscapeString) ? NonEscapeString.new(super(b)) : super(b)
+  end
 end
 
 class HTMLTemplate
@@ -107,6 +110,7 @@ class HTMLTemplate
       attrs = parse_tag_attributes($1)
       next s if attrs['value'] || attrs['checked'] || attrs['selected']
       name = attrs['name']
+      next unless name
       case attrs['type']
         when 'text'
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]

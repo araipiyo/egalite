@@ -188,6 +188,7 @@ module Rack
                 name = head[/Content-Disposition:.* name="?([^\";]*)"?/ni, 1]
 
                 body = Tempfile.new("RackMultipart")  if filename
+                body.binmode if filename
 
                 next
               end

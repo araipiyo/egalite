@@ -105,7 +105,7 @@ class Route
     controller_exist = false
     action_exist = false
     contfrags = (@controller || "").split('/')
-    # todo: protocol and domain.
+    # todo: protocol and host prefix.
     route.each { |fragment|
       command = fragment[0]
       
@@ -175,6 +175,8 @@ class Route
   def link_to(title, params)
     "<a href='#{url_for(params)}'>#{title}</a>"
   end
+  
+  # todo
   def url_pcap(prefix, controller, action, params)
   end
   def url_cap(controller, action, params)
