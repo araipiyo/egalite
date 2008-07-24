@@ -79,7 +79,7 @@ class Controller
     end
   end
   def send_data(data, content_type)
-    Rack::Response.new(data,200,{"Content-Type" => content_type})
+    [200,{"Content-Type" => content_type},[data]]
   end
   
   # helpers
@@ -241,13 +241,13 @@ class Handler
   
   def display_notfound
     if @notfound_template
-      Rack::Response.new(load_template(@notfound_template),404)
+      [404, {}, [load_template(@notfound_template)]]
     else
-      Rack::Response.new('404 not found',404)
+      [404, {}, ['404 not found']]
     end
   end
   def redirect(url)
-    Rack::Response.new(url,302,{'Location' => url})
+    [302,{'Location' => url}, [url]]
   end
   def get_controller(controllername,action, method)
     action = method if action.blank?
@@ -296,7 +296,7 @@ class Handler
       ]
     end
     html << "</body></html>"
-    Rack::Response.new(html.join("\n"),500)
+    [500, {}, [html.join("\n")]]
   end
   
   def handle_egalite_response(values)
@@ -324,7 +324,8 @@ class Handler
           :secure => cookie_opts[:secure] || false
         }
       end
-      response.set_cookie(k,v)
+      response[1]['set-cookie'] ||= {}
+      response[1]['set-cookie'][k] = v
     }
   end
 
@@ -355,9 +356,9 @@ class Handler
     elsif values.is_a?(Array)
       values
     elsif values.is_a?(String)
-      Rack::Response.new(values,200)
+      [200,{},[values]]
     elsif values.is_a?(Rack::Response)
-      values
+      values.to_a
     else
       htmlfile = if controller.template_file
         controller.template_file
@@ -379,9 +380,9 @@ class Handler
         newreq.params = req.params.merge(values)
         (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
         r = run_controller(cont, act, newreq)
-        r.body
+        r[2]
       }
-      Rack::Response.new(html,200)
+      [200,{},[html]]
     end
     set_cookies_to_response(result,req)
     return result
