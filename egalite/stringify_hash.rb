@@ -40,11 +40,11 @@ class StringifyHash < Hash
   end
 
   def dup
-    self.create(self)
+    StringifyHash.create(self)
   end
 
   def merge(hash)
-    self.dup.update(hash)
+    dup.update(hash)
   end
 
   def delete(key)

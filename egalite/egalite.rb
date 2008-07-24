@@ -22,7 +22,7 @@ class Logger
 end
 
 class Controller
-  attr_accessor :env, :params, :template_file
+  attr_accessor :env, :req, :params, :template_file
   undef id
 
   # filters
@@ -38,10 +38,10 @@ class Controller
     @env.db
   end
   def cookies
-    @env.cookies
+    @req.cookies
   end
   def session
-    @env.session
+    @req.session
   end
   def id
     @params[:id]
@@ -84,10 +84,10 @@ class Controller
   
   # helpers
   def url_for(prms)
-    @env.route.url_for(prms)
+    @req.route.url_for(prms)
   end
   def link_to(title,prms)
-    raw(@env.route.link_to(title,prms))
+    raw(@req.route.link_to(title,prms))
   end
   def raw(text)
     NonEscapeString.new(text)
@@ -176,16 +176,21 @@ class EgaliteResponse
 end
 
 class Environment
-  attr_accessor :session, :language, :cookies, :opts
-  attr_accessor :route, :controller, :action, :params, :path, :path_params
-  attr_reader :db, :method
+  attr_reader :db, :opts
 
-  def initialize(db,method)
-    @session = nil
-    @language = nil
+  def initialize(db,opts)
     @db = db
+    @opts = opts
+  end
+end
+
+class Request
+  attr_accessor :session, :cookies
+  attr_accessor :language, :method
+  attr_accessor :route, :controller, :action, :params, :path, :path_params
+
+  def initialize
     @cookies = []
-    @method = method
   end
 end
 
@@ -195,11 +200,11 @@ class Handler
   def initialize(opts = {})
     @routes = opts[:routes] || Route.default_routes
     
-    @env = nil
-
-    @db = opts[:db]
+    db = opts[:db]
+    @db = db
     @opts = opts
-    @opts[:static_root] ||= "static/"
+    @env = Environment.new(db, opts)
+    opts[:static_root] ||= "static/"
 
     @logger = Logger.new
     
@@ -208,9 +213,19 @@ class Handler
     
     @notfound_template = nil
     @error_template = nil
+    
+    @profile = {}
   end
 
  private
+  def profile(key)
+    st = Time.now
+    r = yield
+    fn = Time.now
+    @profile[key] = (@profile[key] || 0.0) + (fn - st)
+    r
+  end
+ 
   def load_template(tmpl)
     # to expand: template caching
     if File.file?(tmpl) && File.readable?(tmpl)
@@ -298,8 +313,8 @@ class Handler
         # todo
     end
   end
-  def set_cookies_to_response(response)
-    @env.cookies.each { |k,v|
+  def set_cookies_to_response(response,req)
+    req.cookies.each { |k,v|
       cookie_opts = @opts[:cookie_opts] || {}
       unless v.is_a?(Hash)
         v = {
@@ -314,53 +329,25 @@ class Handler
   end
 
  public
-  def dispatch(path, params, method)
-    # routing
-    (controller_name, action_name, path_params, prmhash) = nil
-    (controller, action) = nil
-    route = @routes.find { |route|
-      @logger.puts "Routing: matching: #{route.inspect}" if RouteDebug
-      route_result = route.match(path)
-      (controller_name, action_name, path_params, prmhash) = route_result
-      next if route_result == nil
-      @logger.puts "Routing: pre-matched: #{route_result.inspect}" if RouteDebug
-      (controller, action) = get_controller(controller_name, action_name, method)
-      true if controller
-    }
-    return display_notfound unless controller
-
-    @logger.puts "Routing: matched: #{controller.class} #{action}" if RouteDebug
-    params.merge!(prmhash)
-    
-    @env.route = route
-    @env.controller = controller_name
-    @env.action = action_name
-    @env.path_params = path_params
-    @env.path = path_params.join('/')
-
-    # todo: language handling (by pathinfo?)
-      
-    # todo: session handling (by pathinfo?)
-      
-      
+  def run_controller(controller, action, req)
     # controller
     controller.env = @env
-    controller.params = params
+    controller.req = req
+    controller.params = req.params
     
     before_filter_result = controller.before_filter
     if before_filter_result != true
       response = handle_egalite_response(before_filter_result)
-      set_cookies_to_response(response)
+      set_cookies_to_response(response,req)
       return response
     end
     
     nargs = controller.method(action).arity
-    args = []
-    args = path_params[0,nargs.abs] || []
+    args = req.path_params[0,nargs.abs] || []
     if nargs > 0
       args.size.upto(nargs-1) { args << nil }
     end
-    values = controller.send(action,*args)
+    values = profile(:controller) { controller.send(action,*args) }
     
     # result handling
     result = if values.respond_to?(:command)
@@ -375,7 +362,7 @@ class Handler
       htmlfile = if controller.template_file
         controller.template_file
       else
-        s = [@env.controller,@env.action].compact.join('_')
+        s = [req.controller,req.action].compact.join('_')
         s = 'index' if s.blank?
         s + '.html'
       end
@@ -384,24 +371,64 @@ class Handler
       # apply html template
       template = HTMLTemplate.new
       template.controller = controller
-      template.handleTemplate(html,values) { |path,values|
-        dispatch(path,values) # recursive call to handle 'include' tag.
+      template.handleTemplate(html,values) { |values|
+        # recursive call to handle 'include' tag.
+        newreq = req.clone
+        newreq.controller = values['controller'] || req.controller
+        newreq.action = values['action']
+        newreq.params = req.params.merge(values)
+        (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
+        r = run_controller(cont, act, newreq)
+        r.body
       }
       Rack::Response.new(html,200)
     end
-    set_cookies_to_response(result)
+    set_cookies_to_response(result,req)
     return result
+  end
+  
+  def dispatch(path, params, method, req)
+    # routing
+    (controller_name, action_name, path_params, prmhash) = nil
+    (controller, action) = nil
+    
+    route = profile(:routing) { 
+     @routes.find { |route|
+      @logger.puts "Routing: matching: #{route.inspect}" if RouteDebug
+      route_result = route.match(path)
+      (controller_name, action_name, path_params, prmhash) = route_result
+      next if route_result == nil
+      @logger.puts "Routing: pre-matched: #{route_result.inspect}" if RouteDebug
+      (controller, action) = get_controller(controller_name, action_name, method)
+      true if controller
+     }
+    }
+    return display_notfound unless controller
+
+    @logger.puts "Routing: matched: #{controller.class} #{action}" if RouteDebug
+    params.merge!(prmhash)
+    
+    req.route = route
+    req.controller = controller_name
+    req.action = action_name
+    req.path_params = path_params
+    req.path = path_params.join('/')
+
+    # todo: language handling (by pathinfo?)
+    # todo: session handling (by pathinfo?)
+
+    run_controller(controller, action, req)
   end
 
   def call(rack_env)
     # set up logging
     
-    start_time = Time.now
     res = nil
+    @profile = {}
     
-    begin
+    profile(:total) {
+     begin
       req = Rack::Request.new(rack_env)
-      @env = Environment.new(@db, req.request_method)
       
       # parameter handling
       params = StringifyHash.new
@@ -417,19 +444,18 @@ class Handler
          list[last] = v
       }
       
-      @env.params = params
-      @env.cookies = req.cookies
-      @env.opts = @opts
+      ereq = Request.new
+      ereq.params = params
+      ereq.cookies = req.cookies
       
       if @opts[:session_handler]
-        @env.session=@opts[:session_handler].new(@env,@opts[:session_opts] || {})
-        @env.session.load
+        ereq.session = @opts[:session_handler].new(@env,ereq.cookies, @opts[:session_opts] || {})
+        ereq.session.load
       end
       
       # todo: language handling (by cookie/header)
       
-      
-      res = dispatch(req.path_info, params, req.request_method)
+      res = dispatch(req.path_info, params, req.request_method, ereq)
       res = res.to_a
       
       if res[0] == 200
@@ -438,7 +464,7 @@ class Handler
         end
       end
       
-    rescue Exception => e
+     rescue Exception => e
       begin
         # error handling here
         
@@ -453,11 +479,12 @@ class Handler
       rescue Exception => e2
         res = display_internal_server_error(e2)
       end
-    end
-    
-    finish_time = Time.now
+     end
+    }
     
     # write log
+    
+    p @profile
     
     res = res.to_a
     p res if @opts[:response_debug]
@@ -469,9 +496,7 @@ end # module end
 
 class StaticController < Egalite::Controller
   def get
-    puts "hoge"
-  
-    path = env.path
+    path = req.path
     if path.include?("..") or path =~ /^\//
       return [403, {"Content-Type" => "text/plain"}, ["Forbidden\n"]]
     end

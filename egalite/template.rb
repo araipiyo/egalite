@@ -21,7 +21,7 @@ class HTMLTemplate
   
   RE_A = /<a\s+(.+?)>/im
 
-  RE_INCLUDE = /<include\s+name=['"](.+?)['"]\s*\/>/i
+  RE_INCLUDE = /<include\s+(.+?)\/>/i
   RE_PARENT = /<parent\s+name=['"](.+?)['"]\s*\/>/i
   RE_YIELD = /<yield\/>/i
   
@@ -149,7 +149,8 @@ class HTMLTemplate
     # parse include tag
     if block_given?
       html.gsub!(RE_INCLUDE) {
-        yield($1)
+        attrs = parse_tag_attributes($1)
+        yield(attrs)
       }
       parent = nil
       md = RE_PARENT.match(html)

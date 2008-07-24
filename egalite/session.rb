@@ -5,9 +5,9 @@ module Egalite
 class Session
   attr_accessor :expire_after, :hash, :cookie_name
 
-  def initialize(env, opts = {})
+  def initialize(env, cookies, opts = {})
     @env = env
-    @cookies = env.cookies
+    @cookies = cookies
     @cookie_name = opts[:cookie_name] || 'egalite_session'
     @expire_after = opts[:expire_after] || (86400 * 30)
     @secure = opts[:secure] || false
@@ -45,12 +45,12 @@ class SessionSequel < Session
     }
   end
 
-  def initialize(env,opts = {}) 
+  def initialize(env, cookies, opts = {}) 
     @db = env.db
     @rand_key = opts[:rand_key] || 'egalitepiyo'
     @table = opts[:tablename] || :sessions
     
-    super(env, opts)
+    super(env, cookies, opts)
   end
   def cookie(sstr)
     {
