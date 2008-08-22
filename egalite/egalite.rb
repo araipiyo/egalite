@@ -364,7 +364,7 @@ class Handler
     elsif values.is_a?(Array)
       values
     elsif values.is_a?(String)
-      [200,{},[values]]
+      [200,{'Content-Type' => "text/html"},[values]]
     elsif values.is_a?(Rack::Response)
       values.to_a
     else
@@ -390,7 +390,7 @@ class Handler
         r = run_controller(cont, act, newreq)
         r[2]
       }
-      [200,{},[html]]
+      [200,{"Content-Type"=>"text/html"},[html]]
     end
     set_cookies_to_response(result,req)
     return result
@@ -456,7 +456,6 @@ class Handler
       ereq = Request.new
       ereq.params = params
       ereq.cookies = req.cookies
-      p req.cookies
       
       if @opts[:session_handler]
         ereq.session = @opts[:session_handler].new(@env,ereq.cookies, @opts[:session_opts] || {})
