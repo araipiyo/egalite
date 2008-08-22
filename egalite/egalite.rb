@@ -324,9 +324,17 @@ class Handler
           :secure => cookie_opts[:secure] || false
         }
       end
-      response[1]['set-cookie'] ||= {}
-      response[1]['set-cookie'][k] = v
     }
+    a = req.cookies.map { |k,v|
+      s = "#{Rack::Utils.escape(k)}=#{Rack::Utils.escape(v[:value])}"
+      s += "; domain=#{v[:domain]}" if v[:domain]
+      s += "; path=#{v[:path]}" if v[:path]
+      s += "; expires=#{v[:expires].clone.gmtime.strftime("%a, %d-%b-%Y %H:%M:%S GMT")}" if v[:expires]
+      s += "; secure" if v[:secure]
+      s
+    }
+    s = a.join(',')
+    response[1]['Set-Cookie'] = s
   end
 
  public
@@ -448,6 +456,7 @@ class Handler
       ereq = Request.new
       ereq.params = params
       ereq.cookies = req.cookies
+      p req.cookies
       
       if @opts[:session_handler]
         ereq.session = @opts[:session_handler].new(@env,ereq.cookies, @opts[:session_opts] || {})
@@ -485,7 +494,7 @@ class Handler
     
     # write log
     
-    p @profile
+    p @profile if @opts[:log_execution_time]
     
     res = res.to_a
     p res if @opts[:response_debug]
