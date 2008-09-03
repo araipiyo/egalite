@@ -387,6 +387,7 @@ class Handler
         newreq.action = values['action']
         newreq.params = req.params.merge(values)
         (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
+        raise "included HTML not found: #{newreq.controller} #{newreq.action}" unless cont
         r = run_controller(cont, act, newreq)
         r[2]
       }
@@ -425,7 +426,7 @@ class Handler
 
     # todo: language handling (by pathinfo?)
     # todo: session handling (by pathinfo?)
-
+    
     run_controller(controller, action, req)
   end
 

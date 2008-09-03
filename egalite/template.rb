@@ -20,6 +20,7 @@ class HTMLTemplate
   RE_SELECT = /<select\s+name\s*=\s*['"](.+?)['"](.*?)>\s*<\/select>/im
   
   RE_A = /<a\s+(.+?)>/im
+  RE_FORM = /<form\s+(.+?)>/im
 
   RE_INCLUDE = /<include\s+(.+?)\/>/i
   RE_PARENT = /<parent\s+name=['"](.+?)['"]\s*\/>/i
@@ -33,7 +34,7 @@ class HTMLTemplate
   end
   
   def parse_tag_attributes(attrs)
-    a = attrs.split(/(\w+(!:[^=])|\w+=(?:'[^']+'|"[^"]+"|\S+))\s*/)
+    a = attrs.split(/(\:?\w+(!:[^=])|\:?\w+=(?:'[^']+'|"[^"]+"|\S+))\s*/)
     a = a.select { |s| s != "" }
     hash = {}
     a.each { |s|
@@ -43,6 +44,12 @@ class HTMLTemplate
       hash[b[0]] = b[1] || true
     }
     hash
+  end
+  def attr_colon(attrs)
+    colons = {}
+    attrs.each { |k,v| colons[k[1..-1]] = v if k =~ /^\:/ }
+    str = attrs.select { |k,v| k !~ /^\:/ }.map { |k,v| "#{k}='#{v}'" }.join(' ')
+    [colons, str]
   end
   
   def escapeHTML(s)
@@ -126,9 +133,19 @@ class HTMLTemplate
     html.gsub!(RE_A) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['href']
-      attrs = StringifyHash.create(attrs)
-      link = @controller.url_for(attrs)
-      "<a href='#{link}'>"
+      
+      (colons, noncolons) = attr_colon(attrs)
+      colons = StringifyHash.create(colons)
+      link = @controller.url_for(colons)
+      "<a href='#{link}' #{noncolons}>"
+    }
+    html.gsub!(RE_FORM) { |s|
+      attrs = parse_tag_attributes($1)
+      
+      (colons, noncolons) = attr_colon(attrs)
+      colons = StringifyHash.create(colons)
+      link = @controller.url_for(colons)
+      "<form action='#{link}' #{noncolons}>"
     }
 
     # parse select tag

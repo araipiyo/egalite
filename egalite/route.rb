@@ -56,10 +56,15 @@ class Route
       
       case command
         when :controller
-          return nil if pathary.empty?
-          controller += '/' if controller
-          controller ||= ''
-          controller += pathary.shift
+          if pathary.empty? and controller
+            controller += '/index'
+          elsif pathary.empty?
+            return nil
+          else
+            controller += '/' if controller
+            controller ||= ''
+            controller += pathary.shift
+          end
         when :action
           return nil if pathary.empty?
           action = pathary.shift
