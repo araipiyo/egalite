@@ -163,7 +163,7 @@ class Route
       params.delete(:action)
     end
     if not controller_exist and params[:controller]
-      pathary.unshift(params[:controller].split('/'))
+      pathary.unshift(params[:controller].split('/')).flatten!
       params.delete(:controller)
     end
     pathary = pathary.compact.map { |frag| escape(frag) }

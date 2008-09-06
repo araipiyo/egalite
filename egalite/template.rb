@@ -108,8 +108,13 @@ class HTMLTemplate
     # parse place holder
     html.gsub!(RE_PLACE) {
       key = $1
-     next params[key] if params[key].is_a?(NonEscapeString) or not @default_escape
-      escapeHTML(params[key])
+      if not params[key] and orig_values.respond_to?(key)
+        orig_values.send(key)
+      elsif params[key].is_a?(NonEscapeString) or not @default_escape
+        params[key]
+      else
+        escapeHTML(params[key])
+      end
     }
     
     # parse input tag type=text
@@ -117,7 +122,7 @@ class HTMLTemplate
       attrs = parse_tag_attributes($1)
       next s if attrs['value'] || attrs['checked'] || attrs['selected']
       name = attrs['name']
-      next unless name
+      next s unless name
       case attrs['type']
         when 'text'
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]

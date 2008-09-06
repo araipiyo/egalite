@@ -383,7 +383,17 @@ class Handler
       template.handleTemplate(html,values) { |values|
         # recursive call to handle 'include' tag.
         newreq = req.clone
-        newreq.controller = values['controller'] || req.controller
+        if values['controller']
+          if values['controller'] =~ /^\//
+            newreq.controller = values['controller']
+          else
+            cont_path = (req.controller.split('/'))[0..-2]
+            cont_path << values['controller']
+            newreq.controller = cont_path.join('/')
+          end
+        else
+          newreq.controller = req.controller
+        end
         newreq.action = values['action']
         newreq.params = req.params.merge(values)
         (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
