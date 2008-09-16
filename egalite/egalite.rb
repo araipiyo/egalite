@@ -163,7 +163,7 @@ end
 
 class EgaliteError < RuntimeError
 end
-class CrackAttempt < EgaliteError
+class SecurityError < EgaliteError
 end
 class EgaliteResponse
   attr_accessor :command
@@ -253,7 +253,7 @@ class Handler
     action = method if action.blank?
     action.downcase!
     action.gsub!(/[^0-9a-z_]/,'')
-    Controller.new.methods.each { |s| raise CrackAttempt if action == s }
+    Controller.new.methods.each { |s| raise SecurityError if action == s }
     
     controllername ||= ''
     controllername = controllername.split('/').map { |c|

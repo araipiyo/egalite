@@ -45,7 +45,7 @@ class Route
   end
   def match(path)
     path.sub!(/^\/+/,'')
-    pathary = path.split('/')
+    pathary = path.to_s.split('/')
     controller = nil
     action = nil
     path_params = []
@@ -109,7 +109,7 @@ class Route
     pathary = []
     controller_exist = false
     action_exist = false
-    contfrags = (@controller || "").split('/')
+    contfrags = (@controller || "").to_s.split('/')
     # todo: protocol and host prefix.
     route.each { |fragment|
       command = fragment[0]
@@ -120,10 +120,10 @@ class Route
           if params[:controller] == nil
             pathary += contfrags
           elsif params[:controller] =~ /^\//
-            pathary += params[:controller].split('/')
+            pathary += params[:controller].to_s.split('/')
           else
             pathary += contfrags[0..-2]
-            pathary += params[:controller].split('/')
+            pathary += params[:controller].to_s.split('/')
           end
           controller_exist = pathary.size
           params.delete(:controller)
@@ -163,7 +163,7 @@ class Route
       params.delete(:action)
     end
     if not controller_exist and params[:controller]
-      pathary.unshift(params[:controller].split('/')).flatten!
+      pathary.unshift(params[:controller].to_s.split('/')).flatten!
       params.delete(:controller)
     end
     pathary = pathary.compact.map { |frag| escape(frag) }
