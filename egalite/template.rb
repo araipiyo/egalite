@@ -15,7 +15,7 @@ class HTMLTemplate
   RE_ENDIF = /<\/if>/i
   RE_UNLESS = /<unless\s+name=['"](.+?)['"]>/i
   RE_ENDUNLESS = /<\/unless>/i
-  RE_PLACE = /&=([-_0-9a-zA-Z]+?);/
+  RE_PLACE = /&=([.-_0-9a-zA-Z]+?);/
   RE_INPUT = /<input\s+(.+?)>/im
   RE_SELECT = /<select\s+name\s*=\s*['"](.+?)['"](.*?)>\s*<\/select>/im
   
@@ -65,7 +65,13 @@ class HTMLTemplate
   end
 
   def handleTemplate(html,orig_values)
-    params = lambda { |k| orig_values[k] || orig_values[k.to_sym] }
+    params = lambda { |k|
+      if k[0,1] == '.' and orig_values.respond_to?(k[1..-1])
+        orig_values.send(k[1..-1])
+      else
+        orig_values[k] || orig_values[k.to_sym]
+      end
+    }
     
     # parse group tag and recurse inner loop
     while md1 = RE_GROUP.match(html) # beware: complicated....
@@ -108,9 +114,7 @@ class HTMLTemplate
     # parse place holder
     html.gsub!(RE_PLACE) {
       key = $1
-      if not params[key] and orig_values.respond_to?(key)
-        orig_values.send(key)
-      elsif params[key].is_a?(NonEscapeString) or not @default_escape
+      if params[key].is_a?(NonEscapeString) or not @default_escape
         params[key]
       else
         escapeHTML(params[key])
@@ -125,6 +129,8 @@ class HTMLTemplate
       next s unless name
       case attrs['type']
         when 'text'
+         s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
+        when 'hidden'
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
         when 'radio'
           s.sub!(/\/?>$/," checked/>") if (params[name] == attrs['value'])
