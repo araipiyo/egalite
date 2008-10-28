@@ -152,8 +152,10 @@ class HTMLTemplate
     }
     html.gsub!(RE_FORM) { |s|
       attrs = parse_tag_attributes($1)
+      next s if attrs['action']
       
       (colons, noncolons) = attr_colon(attrs)
+      next s if colons.empty?
       colons = StringifyHash.create(colons)
       link = @controller.url_for(colons)
       "<form action='#{link}' #{noncolons}>"
