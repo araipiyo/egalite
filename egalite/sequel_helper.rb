@@ -10,5 +10,10 @@ class Sequel::Model
     selection.flatten.each { |k| hash.delete(k.to_sym) if hash[k.to_sym] }
     update_with_params(hash)
   end
+  def to_hash
+    hash = {}
+    self.each { |k,v| hash[k] = v }
+    hash
+  end
 end
 

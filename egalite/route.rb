@@ -171,9 +171,15 @@ class Route
     if params and params.size > 0
       q = []
       params.each { |k,v|
-        q << "#{escape(k)}=#{escape(v)}"
+        if v.is_a?(Hash)
+          v.each { |k2,v2|
+            q << "#{escape(k)}[#{escape(k2)}]=#{escape(v2)}"
+          }
+        else
+          q << "#{escape(k)}=#{escape(v)}"
+        end
       }
-      path += "?" + q.join('&')
+      path += "?" + q.join('&') unless q.empty?
     end
     path
   end

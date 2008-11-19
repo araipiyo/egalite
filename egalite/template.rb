@@ -64,12 +64,12 @@ class HTMLTemplate
     RE_ENDGROUP.match(html).post_match
   end
 
-  def handleTemplate(html,orig_values)
+  def handleTemplate(html, orig_values, parent_params={})
     params = lambda { |k|
       if k[0,1] == '.' and orig_values.respond_to?(k[1..-1])
         orig_values.send(k[1..-1])
       else
-        orig_values[k] || orig_values[k.to_sym]
+        orig_values[k] || orig_values[k.to_sym] || parent_params[k]
       end
     }
     
@@ -81,7 +81,9 @@ class HTMLTemplate
       groupval = [groupval] unless (groupval.is_a?(Array))
       innertext = ""
       post = handleNestedTag(md1.post_match)
-      groupval.each { |v| innertext << handleTemplate(md1.post_match,v) }
+      groupval.each { |v| 
+        innertext << handleTemplate(md1.post_match, v, params )
+      }
       # replace this group tag
       html[md1.begin(0),html.length] = innertext + post
     end
@@ -146,6 +148,12 @@ class HTMLTemplate
       next s if attrs['href']
       
       (colons, noncolons) = attr_colon(attrs)
+      # when :hoge=$foo, expand hash parameter ['foo']
+      colons.each { |k,v|
+        next if v[0,1] != '$'
+        val = params[v[1..-1]]
+        colons[k] = val
+      }
       colons = StringifyHash.create(colons)
       link = @controller.url_for(colons)
       "<a href='#{link}' #{noncolons}>"
