@@ -49,6 +49,7 @@ module Rack
             response.body << part
           }
           response.finished
+        rescue Errno::ECONNABORTED => e
         ensure
           body.close  if body.respond_to? :close
         end
