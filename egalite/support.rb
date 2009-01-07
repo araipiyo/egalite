@@ -9,3 +9,8 @@ class Hash
   end
 end
 
+class NilClass #:nodoc:
+  def size
+    0
+  end
+end

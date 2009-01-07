@@ -57,9 +57,8 @@ class Controller
   end
   alias :redirect_to :redirect
   
-  def delegate(url)
-    url = url_for(url) if url.is_a?(Hash)
-    EgaliteResponse.new(:delegate, url)
+  def delegate(params)
+    EgaliteResponse.new(:delegate, params)
   end
   def send_file(path, content_type = nil)
     ext = File.extname(path)[1..-1]
@@ -299,20 +298,6 @@ class Handler
     [500, {}, [html.join("\n")]]
   end
   
-  def handle_egalite_response(values)
-    case values.command
-      when :delegate
-        dispatch(values.param,values) # todo: ‚Ü‚¾‚Å‚«‚Ä‚È‚¢
-      when :redirect
-        redirect(values.param)
-      when :template
-        # todo
-      when :notfound
-        display_notfound
-      when :csv
-        # todo
-    end
-  end
   def set_cookies_to_response(response,req)
     req.cookies.each { |k,v|
       cookie_opts = @opts[:cookie_opts] || {}
@@ -336,17 +321,60 @@ class Handler
     s = a.join(',')
     response[1]['Set-Cookie'] = s
   end
+  
+  def inner_dispatch(req, values)
+    # recursive call to handle include tag or delegate.
+    newreq = req.clone
+    values = StringifyHash.create(values)
+    if values[:controller]
+      if values[:controller] =~ /^\//
+        newreq.controller = values[:controller]
+      else
+        cont_path = (req.controller.split('/'))[0..-2]
+        cont_path << values[:controller]
+        newreq.controller = cont_path.join('/')
+      end
+    else
+      newreq.controller = req.controller
+    end
+    path_params = []
+    action = values[:action].to_s
+    if action.split('/').size > 1
+      a = action.split('/')
+      action = a[0]
+      path_params += a[1..-1]
+    end
+    path_params += values[:path_params] || []
+    newreq.action = action
+    newreq.params = req.params.merge(values)
+    newreq.path_params = path_params.flatten
+    newreq.path = path_params.join('/')
+    (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
+    raise "Egalite::Handler#inner_dispatch: controller or HTML not found: #{newreq.controller} #{newreq.action}" unless cont
+    run_controller(cont, act, newreq)
+  end
 
  public
   def run_controller(controller, action, req)
-    # controller
+    # invoke controller
     controller.env = @env
     controller.req = req
     controller.params = req.params
     
     before_filter_result = controller.before_filter
     if before_filter_result != true
-      response = handle_egalite_response(before_filter_result)
+      response = case before_filter_result.command
+       when :delegate
+        inner_dispatch(req, before_filter_result.param)
+       when :redirect
+        redirect(before_filter_result.param)
+       when :template
+        # todo
+       when :notfound
+        display_notfound
+       when :csv
+        # todo
+      end
       set_cookies_to_response(response,req)
       return response
     end
@@ -360,7 +388,18 @@ class Handler
     
     # result handling
     result = if values.respond_to?(:command)
-      handle_egalite_response(values)
+      case values.command
+       when :delegate
+        inner_dispatch(req, values.param)
+       when :redirect
+        redirect(values.param)
+       when :template
+        # todo
+       when :notfound
+        display_notfound
+       when :csv
+        # todo
+      end
     elsif values.is_a?(Array)
       values
     elsif values.is_a?(String)
@@ -368,12 +407,11 @@ class Handler
     elsif values.is_a?(Rack::Response)
       values.to_a
     else
-      htmlfile = if controller.template_file
-        controller.template_file
-      else
-        s = [req.controller,req.action].compact.join('_')
-        s = 'index' if s.blank?
-        s + '.html'
+      htmlfile = controller.template_file
+      unless htmlfile
+        htmlfile = [req.controller,req.action].compact.join('_')
+        htmlfile = 'index' if htmlfile.blank?
+        htmlfile += '.html'
       end
       html = load_template(@template_path + htmlfile)
       return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
@@ -381,25 +419,7 @@ class Handler
       template = HTMLTemplate.new
       template.controller = controller
       template.handleTemplate(html,values) { |values|
-        # recursive call to handle 'include' tag.
-        newreq = req.clone
-        if values['controller']
-          if values['controller'] =~ /^\//
-            newreq.controller = values['controller']
-          else
-            cont_path = (req.controller.split('/'))[0..-2]
-            cont_path << values['controller']
-            newreq.controller = cont_path.join('/')
-          end
-        else
-          newreq.controller = req.controller
-        end
-        newreq.action = values['action']
-        newreq.params = req.params.merge(values)
-        (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
-        raise "included HTML not found: #{newreq.controller} #{newreq.action}" unless cont
-        r = run_controller(cont, act, newreq)
-        r[2]
+        inner_dispatch(req,values)[2]
       }
       [200,{"Content-Type"=>"text/html"},[html]]
     end
@@ -463,6 +483,8 @@ class Handler
          }
          list[last] = v
       }
+
+      puts "before-cookie: #{req.cookies.inspect}" if @opts[:cookie_debug]
       
       ereq = Request.new
       ereq.params = params
@@ -477,6 +499,8 @@ class Handler
       
       res = dispatch(req.path_info, params, req.request_method, ereq)
       res = res.to_a
+
+      puts "after-cookie: #{res[1]['Set-Cookie'].inspect}" if @opts[:cookie_debug]
       
       if res[0] == 200
         if res[1]['Content-Type'] !~ /charset/i and res[1]['Content-Type'] =~ /text\/html/i

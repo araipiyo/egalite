@@ -173,6 +173,7 @@ class Route
       params.each { |k,v|
         if v.is_a?(Hash)
           v.each { |k2,v2|
+            next if v2 == nil
             q << "#{escape(k)}[#{escape(k2)}]=#{escape(v2)}"
           }
         else
