@@ -8,19 +8,28 @@ module Rack
 
       attr_accessor :realm
 
-      def initialize(app, &authenticator)
-        @app, @authenticator = app, authenticator
+      def initialize(app, realm=nil, &authenticator)
+        @app, @realm, @authenticator = app, realm, authenticator
       end
 
 
       private
 
       def unauthorized(www_authenticate = challenge)
-        return [ 401, { 'WWW-Authenticate' => www_authenticate.to_s }, [] ]
+        return [ 401,
+          { 'Content-Type' => 'text/plain',
+            'Content-Length' => '0',
+            'WWW-Authenticate' => www_authenticate.to_s },
+          []
+        ]
       end
 
       def bad_request
-        [ 400, {}, [] ]
+        return [ 400,
+          { 'Content-Type' => 'text/plain',
+            'Content-Length' => '0' },
+          []
+        ]
       end
 
     end

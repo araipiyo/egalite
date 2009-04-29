@@ -1,5 +1,6 @@
 require 'lsapi'
-#require 'cgi'
+require 'rack/content_length'
+
 module Rack
   module Handler
     class LSWS
@@ -9,12 +10,14 @@ module Rack
         end
       end
       def self.serve(app)
+        app = Rack::ContentLength.new(app)
+
         env = ENV.to_hash
         env.delete "HTTP_CONTENT_LENGTH"
         env["SCRIPT_NAME"] = "" if env["SCRIPT_NAME"] == "/"
         env.update({"rack.version" => [0,1],
-                     "rack.input" => STDIN,
-                     "rack.errors" => STDERR,
+                     "rack.input" => StringIO.new($stdin.read.to_s),
+                     "rack.errors" => $stderr,
                      "rack.multithread" => false,
                      "rack.multiprocess" => true,
                      "rack.run_once" => false,
@@ -34,7 +37,7 @@ module Rack
       def self.send_headers(status, headers)
         print "Status: #{status}\r\n"
         headers.each { |k, vs|
-          vs.each { |v|
+          vs.split("\n").each { |v|
             print "#{k}: #{v}\r\n"
           }
         }

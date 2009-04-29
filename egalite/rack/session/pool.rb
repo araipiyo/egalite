@@ -1,82 +1,100 @@
 # AUTHOR: blink <blinketje@gmail.com>; blink#ruby-lang@irc.freenode.net
+# THANKS:
+#   apeiros, for session id generation, expiry setup, and threadiness
+#   sergio, threadiness and bugreps
+
+require 'rack/session/abstract/id'
+require 'thread'
 
 module Rack
   module Session
     # Rack::Session::Pool provides simple cookie based session management.
-    # Session data is stored in a hash held by @pool. The corresponding
-    # session key sent to the client.
-    # The pool is unmonitored and unregulated, which means that over
-    # prolonged use the session pool will be very large.
+    # Session data is stored in a hash held by @pool.
+    # In the context of a multithreaded environment, sessions being
+    # committed to the pool is done in a merging manner.
+    #
+    # The :drop option is available in rack.session.options if you with to
+    # explicitly remove the session from the session cache.
     #
     # Example:
-    #
-    #     use Rack::Session::Pool, :key => 'rack.session',
-    #                              :domain => 'foo.com',
-    #                              :path => '/',
-    #                              :expire_after => 2592000
-    #
-    #     All parameters are optional.
+    #   myapp = MyRackApp.new
+    #   sessioned = Rack::Session::Pool.new(myapp,
+    #     :domain => 'foo.com',
+    #     :expire_after => 2592000
+    #   )
+    #   Rack::Handler::WEBrick.run sessioned
 
-    class Pool
-      attr_reader :pool, :key
+    class Pool < Abstract::ID
+      attr_reader :mutex, :pool
+      DEFAULT_OPTIONS = Abstract::ID::DEFAULT_OPTIONS.merge :drop => false
 
       def initialize(app, options={})
-        @app = app
-        @key = options[:key] || "rack.session"
-        @default_options = {:domain => nil,
-          :path => "/",
-          :expire_after => nil}.merge(options)
+        super
         @pool = Hash.new
-        @default_context = context app, &nil
+        @mutex = Mutex.new
       end
 
-
-      def call(env)
-        @default_context.call(env)
-      end
-
-      def context(app, &block)
-        Rack::Utils::Context.new self, app do |env|
-          load_session env
-          block[env] if block
-          response = app.call(env)
-          commit_session env, response
-          response
+      def generate_sid
+        loop do
+          sid = super
+          break sid unless @pool.key? sid
         end
+      end
+
+      def get_session(env, sid)
+        session = @pool[sid] if sid
+        @mutex.lock if env['rack.multithread']
+        unless sid and session
+          env['rack.errors'].puts("Session '#{sid.inspect}' not found, initializing...") if $VERBOSE and not sid.nil?
+          session = {}
+          sid = generate_sid
+          @pool.store sid, session
+        end
+        session.instance_variable_set('@old', {}.merge(session))
+        return [sid, session]
+      ensure
+        @mutex.unlock if env['rack.multithread']
+      end
+
+      def set_session(env, session_id, new_session, options)
+        @mutex.lock if env['rack.multithread']
+        session = @pool[session_id]
+        if options[:renew] or options[:drop]
+          @pool.delete session_id
+          return false if options[:drop]
+          session_id = generate_sid
+          @pool.store session_id, 0
+        end
+        old_session = new_session.instance_variable_get('@old') || {}
+        session = merge_sessions session_id, old_session, new_session, session
+        @pool.store session_id, session
+        return session_id
+      rescue
+        warn "#{new_session.inspect} has been lost."
+        warn $!.inspect
+      ensure
+        @mutex.unlock if env['rack.multithread']
       end
 
       private
 
-      def load_session(env)
-        sess_id = env.fetch('HTTP_COOKIE','')[/#{@key}=([^,;]+)/,1]
-        begin
-          sess_id = Array.new(8){rand(16).to_s(16)}*''
-        end while @pool.key? sess_id if sess_id.nil? or !@pool.key? sess_id
-
-        session = @pool.fetch sess_id, {}
-        session.instance_variable_set '@dat', [sess_id, Time.now]
-
-        @pool.store sess_id, env['rack.session'] = session
-        env["rack.session.options"] = @default_options.dup
-      end
-
-      def commit_session(env, response)
-        session = env['rack.session']
-        options = env['rack.session.options']
-        sdat    = session.instance_variable_get '@dat'
-
-        cookie = Utils.escape(@key)+'='+Utils.escape(sdat[0])
-        cookie<< "; domain=#{options[:domain]}" if options[:domain]
-        cookie<< "; path=#{options[:path]}" if options[:path]
-        cookie<< "; expires=#{sdat[1]+options[:expires_after]}" if options[:expires_after]
-
-        case a = (h = response[1])['Set-Cookie']
-        when Array then  a << cookie
-        when String then h['Set-Cookie'] = [a, cookie]
-        when nil then    h['Set-Cookie'] = cookie
+      def merge_sessions sid, old, new, cur=nil
+        cur ||= {}
+        unless Hash === old and Hash === new
+          warn 'Bad old or new sessions provided.'
+          return cur
         end
-      end
 
+        delete = old.keys - new.keys
+        warn "//@#{sid}: dropping #{delete*','}" if $DEBUG and not delete.empty?
+        delete.each{|k| cur.delete k }
+
+        update = new.keys.select{|k| new[k] != old[k] }
+        warn "//@#{sid}: updating #{update*','}" if $DEBUG and not update.empty?
+        update.each{|k| cur[k] = new[k] }
+
+        cur
+      end
     end
   end
 end

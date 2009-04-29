@@ -1,5 +1,7 @@
 require 'scgi'
 require 'stringio'
+require 'rack/content_length'
+require 'rack/chunked'
 
 module Rack
   module Handler
@@ -14,7 +16,7 @@ module Rack
       end
       
       def initialize(settings = {})
-        @app = settings[:app]
+        @app = Rack::Chunked.new(Rack::ContentLength.new(settings[:app]))
         @log = Object.new
         def @log.info(*args); end
         def @log.error(*args); end
@@ -32,7 +34,7 @@ module Rack
         env["SCRIPT_NAME"] = ""
         env.update({"rack.version" => [0,1],
                      "rack.input" => StringIO.new(input_body),
-                     "rack.errors" => STDERR,
+                     "rack.errors" => $stderr,
 
                      "rack.multithread" => true,
                      "rack.multiprocess" => true,
@@ -44,7 +46,7 @@ module Rack
         begin
           socket.write("Status: #{status}\r\n")
           headers.each do |k, vs|
-            vs.each {|v| socket.write("#{k}: #{v}\r\n")}
+            vs.split("\n").each { |v| socket.write("#{k}: #{v}\r\n")}
           end
           socket.write("\r\n")
           body.each {|s| socket.write(s)}

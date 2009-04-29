@@ -97,6 +97,8 @@ module Rack
         env["rack.input"] = opts[:input]
       end
 
+      env["CONTENT_LENGTH"] ||= env["rack.input"].length.to_s
+
       opts.each { |field, value|
         env[field] = value  if String === field
       }
@@ -116,9 +118,8 @@ module Rack
       @original_headers = headers
       @headers = Rack::Utils::HeaderHash.new
       headers.each { |field, values|
-        values.each { |value|
-          @headers[field] = value
-        }
+        @headers[field] = values
+        @headers[field] = ""  if values.empty?
       }
 
       @body = ""

@@ -1,6 +1,7 @@
 require 'ostruct'
 require 'erb'
 require 'rack/request'
+require 'rack/utils'
 
 module Rack
   # Rack::ShowExceptions catches all exceptions raised from the app it
@@ -22,7 +23,11 @@ module Rack
     def call(env)
       @app.call(env)
     rescue StandardError, LoadError, SyntaxError => e
-      [500, {"Content-Type" => "text/html"}, pretty(env, e)]
+      backtrace = pretty(env, e)
+      [500,
+       {"Content-Type" => "text/html",
+        "Content-Length" => backtrace.join.size.to_s},
+       backtrace]
     end
 
     def pretty(env, exception)
@@ -331,7 +336,7 @@ TEMPLATE = <<'HTML'
 
 <div id="explanation">
   <p>
-    You're seeing this error because you use <code>Rack::ShowException</code>.
+    You're seeing this error because you use <code>Rack::ShowExceptions</code>.
   </p>
 </div>
 

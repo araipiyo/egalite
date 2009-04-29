@@ -1,4 +1,17 @@
 require 'fcgi'
+require 'socket'
+require 'rack/content_length'
+require 'rack/rewindable_input'
+
+class FCGI::Stream
+  alias _rack_read_without_buffer read
+
+  def read(n, buffer=nil)
+    buf = _rack_read_without_buffer n
+    buffer.replace(buf.to_s)  if buffer
+    buf
+  end
+end
 
 module Rack
   module Handler
@@ -11,32 +24,18 @@ module Rack
         }
       end
 
-      module ProperStream       # :nodoc:
-        def each                # This is missing by default.
-          while line = gets
-            yield line
-          end
-        end
-
-        def read(*args)
-          if args.empty?
-            super || ""           # Empty string on EOF.
-          else
-            super
-          end
-        end
-      end
-
       def self.serve(request, app)
+        app = Rack::ContentLength.new(app)
+
         env = request.env
         env.delete "HTTP_CONTENT_LENGTH"
 
-        request.in.extend ProperStream
-
         env["SCRIPT_NAME"] = ""  if env["SCRIPT_NAME"] == "/"
+        
+        rack_input = RewindableInput.new(request.in)
 
         env.update({"rack.version" => [0,1],
-                     "rack.input" => request.in,
+                     "rack.input" => rack_input,
                      "rack.errors" => request.err,
 
                      "rack.multithread" => false,
@@ -50,13 +49,19 @@ module Rack
         env["HTTP_VERSION"] ||= env["SERVER_PROTOCOL"]
         env["REQUEST_PATH"] ||= "/"
         env.delete "PATH_INFO"  if env["PATH_INFO"] == ""
+        env.delete "CONTENT_TYPE"  if env["CONTENT_TYPE"] == ""
+        env.delete "CONTENT_LENGTH"  if env["CONTENT_LENGTH"] == ""
 
-        status, headers, body = app.call(env)
         begin
-          send_headers request.out, status, headers
-          send_body request.out, body
+          status, headers, body = app.call(env)
+          begin
+            send_headers request.out, status, headers
+            send_body request.out, body
+          ensure
+            body.close  if body.respond_to? :close
+          end
         ensure
-          body.close  if body.respond_to? :close
+          rack_input.close
           request.finish
         end
       end
@@ -64,7 +69,7 @@ module Rack
       def self.send_headers(out, status, headers)
         out.print "Status: #{status}\r\n"
         headers.each { |k, vs|
-          vs.each { |v|
+          vs.split("\n").each { |v|
             out.print "#{k}: #{v}\r\n"
           }
         }

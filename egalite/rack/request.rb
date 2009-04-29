@@ -8,10 +8,22 @@ module Rack
   #   req = Rack::Request.new(env)
   #   req.post?
   #   req.params["data"]
+  #
+  # The environment hash passed will store a reference to the Request object
+  # instantiated so that it will only instantiate if an instance of the Request
+  # object doesn't already exist.
 
   class Request
     # The environment of the request.
     attr_reader :env
+
+    def self.new(env, *args)
+      if self == Rack::Request
+        env["rack.request"] ||= super
+      else
+        super
+      end
+    end
 
     def initialize(env)
       @env = env
@@ -24,6 +36,40 @@ module Rack
     def port;            @env["SERVER_PORT"].to_i                 end
     def request_method;  @env["REQUEST_METHOD"]                   end
     def query_string;    @env["QUERY_STRING"].to_s                end
+    def content_length;  @env['CONTENT_LENGTH']                   end
+    def content_type;    @env['CONTENT_TYPE']                     end
+    def session;         @env['rack.session'] ||= {}              end
+    def session_options; @env['rack.session.options'] ||= {}      end
+
+    # The media type (type/subtype) portion of the CONTENT_TYPE header
+    # without any media type parameters. e.g., when CONTENT_TYPE is
+    # "text/plain;charset=utf-8", the media-type is "text/plain".
+    #
+    # For more information on the use of media types in HTTP, see:
+    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.7
+    def media_type
+      content_type && content_type.split(/\s*[;,]\s*/, 2).first.downcase
+    end
+
+    # The media type parameters provided in CONTENT_TYPE as a Hash, or
+    # an empty Hash if no CONTENT_TYPE or media-type parameters were
+    # provided.  e.g., when the CONTENT_TYPE is "text/plain;charset=utf-8",
+    # this method responds with the following Hash:
+    #   { 'charset' => 'utf-8' }
+    def media_type_params
+      return {} if content_type.nil?
+      content_type.split(/\s*[;,]\s*/)[1..-1].
+        collect { |s| s.split('=', 2) }.
+        inject({}) { |hash,(k,v)| hash[k.downcase] = v ; hash }
+    end
+
+    # The character set of the request body if a "charset" media type
+    # parameter was given, or nil if no "charset" was specified. Note
+    # that, per RFC2616, text/* media types that specify no explicit
+    # charset are to be considered ISO-8859-1.
+    def content_charset
+      media_type_params['charset']
+    end
 
     def host
       # Remove port number.
@@ -37,6 +83,39 @@ module Rack
     def post?;           request_method == "POST"                 end
     def put?;            request_method == "PUT"                  end
     def delete?;         request_method == "DELETE"               end
+    def head?;           request_method == "HEAD"                 end
+
+    # The set of form-data media-types. Requests that do not indicate
+    # one of the media types presents in this list will not be eligible
+    # for form-data / param parsing.
+    FORM_DATA_MEDIA_TYPES = [
+      nil,
+      'application/x-www-form-urlencoded',
+      'multipart/form-data'
+    ]
+
+    # The set of media-types. Requests that do not indicate
+    # one of the media types presents in this list will not be eligible
+    # for param parsing like soap attachments or generic multiparts
+    PARSEABLE_DATA_MEDIA_TYPES = [
+      'multipart/related',
+      'multipart/mixed'
+    ]  
+
+    # Determine whether the request body contains form-data by checking
+    # the request media_type against registered form-data media-types:
+    # "application/x-www-form-urlencoded" and "multipart/form-data". The
+    # list of form-data media types can be modified through the
+    # +FORM_DATA_MEDIA_TYPES+ array.
+    def form_data?
+      FORM_DATA_MEDIA_TYPES.include?(media_type)
+    end
+
+    # Determine whether the request body contains data by checking
+    # the request media_type against registered parse-data media-types
+    def parseable_data?
+      PARSEABLE_DATA_MEDIA_TYPES.include?(media_type)
+    end
 
     # Returns the data recieved in the query string.
     def GET
@@ -45,7 +124,7 @@ module Rack
       else
         @env["rack.request.query_string"] = query_string
         @env["rack.request.query_hash"]   =
-          Utils.parse_query(query_string)
+          Utils.parse_nested_query(query_string)
       end
     end
 
@@ -54,22 +133,33 @@ module Rack
     # This method support both application/x-www-form-urlencoded and
     # multipart/form-data.
     def POST
-      if @env["rack.request.form_input"] == @env["rack.input"]
+      if @env["rack.request.form_input"].eql? @env["rack.input"]
         @env["rack.request.form_hash"]
-      else
+      elsif form_data? || parseable_data?
         @env["rack.request.form_input"] = @env["rack.input"]
         unless @env["rack.request.form_hash"] =
             Utils::Multipart.parse_multipart(env)
-          @env["rack.request.form_vars"] = @env["rack.input"].read
-          @env["rack.request.form_hash"] = Utils.parse_query(@env["rack.request.form_vars"])
+          form_vars = @env["rack.input"].read
+
+          # Fix for Safari Ajax postings that always append \0
+          form_vars.sub!(/\0\z/, '')
+
+          @env["rack.request.form_vars"] = form_vars
+          @env["rack.request.form_hash"] = Utils.parse_nested_query(form_vars)
+
+          @env["rack.input"].rewind
         end
         @env["rack.request.form_hash"]
+      else
+        {}
       end
     end
 
     # The union of GET and POST data.
     def params
-      self.GET.update(self.POST)
+      self.put? ? self.GET : self.GET.update(self.POST)
+    rescue EOFError => e
+      self.GET
     end
 
     # shortcut for request.params[key]
@@ -132,11 +222,33 @@ module Rack
 
       url
     end
-
+    
+    def path
+      script_name + path_info
+    end
+    
     def fullpath
-      path = script_name + path_info
-      path << "?" << query_string  unless query_string.empty?
-      path
+      query_string.empty? ? path : "#{path}?#{query_string}"
+    end
+
+    def accept_encoding
+      @env["HTTP_ACCEPT_ENCODING"].to_s.split(/,\s*/).map do |part|
+        m = /^([^\s,]+?)(?:;\s*q=(\d+(?:\.\d+)?))?$/.match(part) # From WEBrick
+
+        if m
+          [m[1], (m[2] || 1.0).to_f]
+        else
+          raise "Invalid value for Accept-Encoding: #{part.inspect}"
+        end
+      end
+    end
+
+    def ip
+      if addr = @env['HTTP_X_FORWARDED_FOR']
+        addr.split(',').last.strip
+      else
+        @env['REMOTE_ADDR']
+      end
     end
   end
 end

@@ -12,7 +12,11 @@ module Rack
   # first, since they are most specific.
 
   class URLMap
-    def initialize(map)
+    def initialize(map = {})
+      remap(map)
+    end
+
+    def remap(map)
       @mapping = map.map { |location, app|
         if location =~ %r{\Ahttps?://(.*?)(/.*)}
           host, location = $1, $2
@@ -20,26 +24,29 @@ module Rack
           host = nil
         end
 
-        location = ""  if location == "/"
+        unless location[0] == ?/
+          raise ArgumentError, "paths need to start with /"
+        end
+        location = location.chomp('/')
 
         [host, location, app]
-      }.sort_by { |(h, l, a)| -l.size } # Longest path first
+      }.sort_by { |(h, l, a)| [h ? -h.size : (-1.0 / 0.0), -l.size] }  # Longest path first
     end
 
     def call(env)
       path = env["PATH_INFO"].to_s.squeeze("/")
+      script_name = env['SCRIPT_NAME']
       hHost, sName, sPort = env.values_at('HTTP_HOST','SERVER_NAME','SERVER_PORT')
       @mapping.each { |host, location, app|
-        if (hHost == host || sName == host \
-          || (host.nil? && (hHost == sName || hHost == sName+':'+sPort))) \
-          and location == path[0, location.size] \
-          and (path[location.size] == nil || path[location.size] == ?/)
-          env["SCRIPT_NAME"] += location.dup
-          env["PATH_INFO"] = path[location.size..-1]
-          env["PATH_INFO"].gsub!(/\/\z/, '')
-          env["PATH_INFO"] = "/"  if env["PATH_INFO"].empty?
-          return app.call(env)
-        end
+        next unless (hHost == host || sName == host \
+          || (host.nil? && (hHost == sName || hHost == sName+':'+sPort)))
+        next unless location == path[0, location.size]
+        next unless path[location.size] == nil || path[location.size] == ?/
+
+        return app.call(
+          env.merge(
+            'SCRIPT_NAME' => (script_name + location),
+            'PATH_INFO'   => path[location.size..-1]))
       }
       [404, {"Content-Type" => "text/plain"}, ["Not Found: #{path}"]]
     end

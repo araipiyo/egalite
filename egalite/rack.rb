@@ -1,9 +1,10 @@
-# Copyright (C) 2007, 2008 Christian Neukirchen <purl.org/net/chneukirchen>
+# Copyright (C) 2007, 2008, 2009 Christian Neukirchen <purl.org/net/chneukirchen>
 #
 # Rack is freely distributable under the terms of an MIT-style license.
 # See COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-$: << File.expand_path(File.dirname(__FILE__))
+path = File.expand_path(File.dirname(__FILE__))
+$:.unshift(path) unless $:.include?(path)
 
 
 # The Rack main module, serving as a namespace for all core Rack
@@ -14,19 +15,35 @@ $: << File.expand_path(File.dirname(__FILE__))
 
 module Rack
   # The Rack protocol version number implemented.
-  VERSION = [0,1]
+  VERSION = [1,0]
 
   # Return the Rack protocol version as a dotted string.
   def self.version
     VERSION.join(".")
   end
 
+  # Return the Rack release as a dotted string.
+  def self.release
+    "1.0"
+  end
+
   autoload :Builder, "rack/builder"
   autoload :Cascade, "rack/cascade"
+  autoload :Chunked, "rack/chunked"
   autoload :CommonLogger, "rack/commonlogger"
+  autoload :ConditionalGet, "rack/conditionalget"
+  autoload :ContentLength, "rack/content_length"
+  autoload :ContentType, "rack/content_type"
   autoload :File, "rack/file"
+  autoload :Deflater, "rack/deflater"
+  autoload :Directory, "rack/directory"
   autoload :ForwardRequest, "rack/recursive"
+  autoload :Handler, "rack/handler"
+  autoload :Head, "rack/head"
   autoload :Lint, "rack/lint"
+  autoload :Lock, "rack/lock"
+  autoload :MethodOverride, "rack/methodoverride"
+  autoload :Mime, "rack/mime"
   autoload :Recursive, "rack/recursive"
   autoload :Reloader, "rack/reloader"
   autoload :ShowExceptions, "rack/showexceptions"
@@ -70,23 +87,4 @@ module Rack
   module Adapter
     autoload :Camping, "rack/adapter/camping"
   end
-
-  # *Handlers* connect web servers with Rack.
-  #
-  # Rack includes Handlers for Mongrel, WEBrick, FastCGI, CGI, SCGI
-  # and LiteSpeed.
-  #
-  # Handlers usually are activated by calling <tt>MyHandler.run(myapp)</tt>.
-  # A second optional hash can be passed to include server-specific
-  # configuration.
-
-  module Handler
-    autoload :CGI, "rack/handler/cgi"
-    autoload :FastCGI, "rack/handler/fastcgi"
-    autoload :Mongrel, "rack/handler/mongrel"
-    autoload :WEBrick, "rack/handler/webrick"
-    autoload :LSWS, "rack/handler/lsws"
-    autoload :SCGI, "rack/handler/scgi"
-  end
 end
-

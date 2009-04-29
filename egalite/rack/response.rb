@@ -16,6 +16,8 @@ module Rack
   # Your application's +call+ should end returning Response#finish.
 
   class Response
+    attr_accessor :length
+
     def initialize(body=[], status=200, header={}, &block)
       @status = status
       @header = Utils::HeaderHash.new({"Content-Type" => "text/html"}.
@@ -23,6 +25,7 @@ module Rack
 
       @writer = lambda { |x| @body << x }
       @block = nil
+      @length = 0
 
       @body = []
 
@@ -59,12 +62,14 @@ module Rack
         # N.B.: cgi.rb uses spaces...
         expires = "; expires=" + value[:expires].clone.gmtime.
           strftime("%a, %d-%b-%Y %H:%M:%S GMT")    if value[:expires]
+        secure = "; secure"  if value[:secure]
+        httponly = "; HttpOnly" if value[:httponly]
         value = value[:value]
       end
       value = [value]  unless Array === value
       cookie = Utils.escape(key) + "=" +
         value.map { |v| Utils.escape v }.join("&") +
-        "#{domain}#{path}#{expires}"
+        "#{domain}#{path}#{expires}#{secure}#{httponly}"
 
       case self["Set-Cookie"]
       when Array
@@ -90,6 +95,10 @@ module Rack
                    :expires => Time.at(0) }.merge(value))
     end
 
+    def redirect(target, status=302)
+      self.status = status
+      self["Location"] = target
+    end
 
     def finish(&block)
       @block = block
@@ -109,8 +118,16 @@ module Rack
       @block.call(self)  if @block
     end
 
+    # Append to body and update Content-Length.
+    #
+    # NOTE: Do not mix #write and direct #body access!
+    #
     def write(str)
-      @writer.call str.to_s
+      s = str.to_s
+      @length += Rack::Utils.bytesize(s)
+      @writer.call s
+
+      header["Content-Length"] = @length.to_s
       str
     end
 

@@ -1,3 +1,5 @@
+require 'rack/utils'
+
 module Rack
   # Rack::Lint validates your application and the requests and
   # responses according to the Rack spec.
@@ -30,6 +32,10 @@ module Rack
     ## A Rack application is an Ruby object (not a class) that
     ## responds to +call+.
     def call(env=nil)
+      dup._call(env)
+    end
+
+    def _call(env)
       ## It takes exactly one argument, the *environment*
       assert("No env given") { env }
       check_env env
@@ -45,6 +51,7 @@ module Rack
       check_headers headers
       ## and the *body*.
       check_content_type status, headers
+      check_content_length status, headers, env
       [status, headers, self]
     end
 
@@ -57,7 +64,7 @@ module Rack
         env.instance_of? Hash
       }
 
-      ## 
+      ##
       ## The environment is required to include these variables
       ## (adopted from PEP333), except when they'd be empty, but see
       ## below.
@@ -81,7 +88,9 @@ module Rack
       ##                      within the application. This may be an
       ##                      empty string, if the request URL targets
       ##                      the application root and does not have a
-      ##                      trailing slash.
+      ##                      trailing slash. This value may be
+      ##                      percent-encoded when I originating from
+      ##                      a URL.
 
       ## <tt>QUERY_STRING</tt>:: The portion of the request URL that
       ##                         follows the <tt>?</tt>, if any. May be
@@ -102,20 +111,49 @@ module Rack
       ## In addition to this, the Rack environment must include these
       ## Rack-specific variables:
 
-      ## <tt>rack.version</tt>:: The Array [0,1], representing this version of Rack.
+      ## <tt>rack.version</tt>:: The Array [1,0], representing this version of Rack.
       ## <tt>rack.url_scheme</tt>:: +http+ or +https+, depending on the request URL.
       ## <tt>rack.input</tt>:: See below, the input stream.
       ## <tt>rack.errors</tt>:: See below, the error stream.
       ## <tt>rack.multithread</tt>:: true if the application object may be simultaneously invoked by another thread in the same process, false otherwise.
       ## <tt>rack.multiprocess</tt>:: true if an equivalent application object may be simultaneously invoked by another process, false otherwise.
       ## <tt>rack.run_once</tt>:: true if the server expects (but does not guarantee!) that the application will only be invoked this one time during the life of its containing process. Normally, this will only be true for a server based on CGI (or something similar).
+      ##
+
+      ## Additional environment specifications have approved to
+      ## standardized middleware APIs.  None of these are required to
+      ## be implemented by the server.
+
+      ## <tt>rack.session</tt>:: A hash like interface for storing request session data.
+      ##                         The store must implement:
+      if session = env['rack.session']
+        ##                         store(key, value)         (aliased as []=);
+        assert("session #{session.inspect} must respond to store and []=") {
+          session.respond_to?(:store) && session.respond_to?(:[]=)
+        }
+
+        ##                         fetch(key, default = nil) (aliased as []);
+        assert("session #{session.inspect} must respond to fetch and []") {
+          session.respond_to?(:fetch) && session.respond_to?(:[])
+        }
+
+        ##                         delete(key);
+        assert("session #{session.inspect} must respond to delete") {
+          session.respond_to?(:delete)
+        }
+
+        ##                         clear;
+        assert("session #{session.inspect} must respond to clear") {
+          session.respond_to?(:clear)
+        }
+      end
 
       ## The server or the application can store their own data in the
       ## environment, too.  The keys must contain at least one dot,
       ## and should be prefixed uniquely.  The prefix <tt>rack.</tt>
-      ## is reserved for use with the Rack core distribution and must
-      ## not be used otherwise.
-      ## 
+      ## is reserved for use with the Rack core distribution and other
+      ## accepted specifications and must not be used otherwise.
+      ##
 
       %w[REQUEST_METHOD SERVER_NAME SERVER_PORT
          QUERY_STRING
@@ -141,7 +179,7 @@ module Rack
         }
       }
 
-      ## 
+      ##
       ## There are the following restrictions:
 
       ## * <tt>rack.version</tt> must be an array of Integers.
@@ -158,11 +196,9 @@ module Rack
       ## * There must be a valid error stream in <tt>rack.errors</tt>.
       check_error env["rack.errors"]
 
-      ## * The <tt>REQUEST_METHOD</tt> must be one of +GET+, +POST+, +PUT+,
-      ##   +DELETE+, +HEAD+, +OPTIONS+, +TRACE+.
+      ## * The <tt>REQUEST_METHOD</tt> must be a valid token.
       assert("REQUEST_METHOD unknown: #{env["REQUEST_METHOD"]}") {
-        %w[GET POST PUT DELETE
-           HEAD OPTIONS TRACE].include?(env["REQUEST_METHOD"])
+        env["REQUEST_METHOD"] =~ /\A[0-9A-Za-z!\#$%&'*+.^_`|~-]+\z/
       }
 
       ## * The <tt>SCRIPT_NAME</tt>, if non-empty, must start with <tt>/</tt>
@@ -195,9 +231,12 @@ module Rack
     end
 
     ## === The Input Stream
+    ##
+    ## The input stream is an IO-like object which contains the raw HTTP
+    ## POST data. If it is a file then it must be opened in binary mode.
     def check_input(input)
-      ## The input stream must respond to +gets+, +each+ and +read+.
-      [:gets, :each, :read].each { |method|
+      ## The input stream must respond to +gets+, +each+, +read+ and +rewind+.
+      [:gets, :each, :read, :rewind].each { |method|
         assert("rack.input #{input} does not respond to ##{method}") {
           input.respond_to? method
         }
@@ -211,6 +250,10 @@ module Rack
         @input = input
       end
 
+      def size
+        @input.size
+      end
+
       ## * +gets+ must be called without arguments and return a string,
       ##   or +nil+ on EOF.
       def gets(*args)
@@ -222,21 +265,44 @@ module Rack
         v
       end
 
-      ## * +read+ must be called without or with one integer argument
-      ##   and return a string, or +nil+ on EOF.
+      ## * +read+ behaves like IO#read. Its signature is <tt>read([length, [buffer]])</tt>.
+      ##   If given, +length+ must be an non-negative Integer (>= 0) or +nil+, and +buffer+ must
+      ##   be a String and may not be nil. If +length+ is given and not nil, then this method
+      ##   reads at most +length+ bytes from the input stream. If +length+ is not given or nil,
+      ##   then this method reads all data until EOF.
+      ##   When EOF is reached, this method returns nil if +length+ is given and not nil, or ""
+      ##   if +length+ is not given or is nil.
+      ##   If +buffer+ is given, then the read data will be placed into +buffer+ instead of a
+      ##   newly created String object.
       def read(*args)
         assert("rack.input#read called with too many arguments") {
-          args.size <= 1
+          args.size <= 2
         }
-        if args.size == 1
-          assert("rack.input#read called with non-integer argument") {
-            args.first.kind_of? Integer
+        if args.size >= 1
+          assert("rack.input#read called with non-integer and non-nil length") {
+            args.first.kind_of?(Integer) || args.first.nil?
+          }
+          assert("rack.input#read called with a negative length") {
+            args.first.nil? || args.first >= 0
           }
         end
+        if args.size >= 2
+          assert("rack.input#read called with non-String buffer") {
+            args[1].kind_of?(String)
+          }
+        end
+        
         v = @input.read(*args)
-        assert("rack.input#read didn't return a String") {
+        
+        assert("rack.input#read didn't return nil or a String") {
           v.nil? or v.instance_of? String
         }
+        if args[0].nil?
+          assert("rack.input#read(nil) returned nil on EOF") {
+            !v.nil?
+          }
+        end
+        
         v
       end
 
@@ -248,6 +314,23 @@ module Rack
             line.instance_of? String
           }
           yield line
+        }
+      end
+      
+      ## * +rewind+ must be called without arguments. It rewinds the input
+      ##   stream back to the beginning. It must not raise Errno::ESPIPE:
+      ##   that is, it may not be a pipe or a socket. Therefore, handler
+      ##   developers must buffer the input data into some rewindable object
+      ##   if the underlying input stream is not rewindable.
+      def rewind(*args)
+        assert("rack.input#rewind called with arguments") { args.size == 0 }
+        assert("rack.input#rewind raised Errno::ESPIPE") {
+          begin
+            @input.rewind
+            true
+          rescue Errno::ESPIPE
+            false
+          end
         }
       end
 
@@ -301,14 +384,17 @@ module Rack
 
     ## === The Status
     def check_status(status)
-      ## The status, if parsed as integer (+to_i+), must be bigger than 100.
-      assert("Status must be >100 seen as integer") { status.to_i > 100 }
+      ## This is an HTTP status. When parsed as integer (+to_i+), it must be
+      ## greater than or equal to 100.
+      assert("Status must be >=100 seen as integer") { status.to_i >= 100 }
     end
 
     ## === The Headers
     def check_headers(header)
-      ## The header must respond to each, and yield values of key and value.
-      assert("header should respond to #each") { header.respond_to? :each }
+      ## The header must respond to +each+, and yield values of key and value.
+      assert("headers object should respond to #each, but doesn't (got #{header.class} as headers)") {
+         header.respond_to? :each
+      }
       header.each { |key, value|
         ## The header keys must be Strings.
         assert("header key must be a string, was #{key.class}") {
@@ -323,15 +409,14 @@ module Rack
         ## but only contain keys that consist of
         ## letters, digits, <tt>_</tt> or <tt>-</tt> and start with a letter.
         assert("invalid header name: #{key}") { key =~ /\A[a-zA-Z][a-zA-Z0-9_-]*\z/ }
-        ## 
-        ## The values of the header must respond to #each.
-        assert("header values must respond to #each") { value.respond_to? :each }
-        value.each { |item|
-          ## The values passed on #each must be Strings
-          assert("header values must consist of Strings") {
-            item.instance_of?(String)
-          }
-          ## and not contain characters below 037.
+
+        ## The values of the header must be Strings,
+        assert("a header value must be a String, but the value of " +
+          "'#{key}' is a #{value.class}") { value.kind_of? String }
+        ## consisting of lines (for multiple header values, e.g. multiple
+        ## <tt>Set-Cookie</tt> values) seperated by "\n".
+        value.split("\n").each { |item|
+          ## The lines must not contain characters below 037.
           assert("invalid header value #{key}: #{item.inspect}") {
             item !~ /[\000-\037]/
           }
@@ -343,24 +428,65 @@ module Rack
     def check_content_type(status, headers)
       headers.each { |key, value|
         ## There must be a <tt>Content-Type</tt>, except when the
-        ## +Status+ is 204 or 304, in which case there must be none
+        ## +Status+ is 1xx, 204 or 304, in which case there must be none
         ## given.
         if key.downcase == "content-type"
-          assert("Content-Type header found in #{status} response, not allowed"){
-            not [204, 304].include? status.to_i
+          assert("Content-Type header found in #{status} response, not allowed") {
+            not Rack::Utils::STATUS_WITH_NO_ENTITY_BODY.include? status.to_i
           }
           return
         end
       }
       assert("No Content-Type header found") {
-        [201, 204, 304].include? status.to_i
+        Rack::Utils::STATUS_WITH_NO_ENTITY_BODY.include? status.to_i
+      }
+    end
+
+    ## === The Content-Length
+    def check_content_length(status, headers, env)
+      headers.each { |key, value|
+        if key.downcase == 'content-length'
+          ## There must not be a <tt>Content-Length</tt> header when the
+          ## +Status+ is 1xx, 204 or 304.
+          assert("Content-Length header found in #{status} response, not allowed") {
+            not Rack::Utils::STATUS_WITH_NO_ENTITY_BODY.include? status.to_i
+          }
+
+          bytes = 0
+          string_body = true
+
+          if @body.respond_to?(:to_ary)
+            @body.each { |part|
+              unless part.kind_of?(String)
+                string_body = false
+                break
+              end
+
+              bytes += Rack::Utils.bytesize(part)
+            }
+
+            if env["REQUEST_METHOD"] == "HEAD"
+              assert("Response body was given for HEAD request, but should be empty") {
+                bytes == 0
+              }
+            else
+              if string_body
+                assert("Content-Length header was #{value}, but should be #{bytes}") {
+                  value == bytes.to_s
+                }
+              end
+            end
+          end
+
+          return
+        end
       }
     end
 
     ## === The Body
     def each
       @closed = false
-      ## The Body must respond to #each
+      ## The Body must respond to +each+
       @body.each { |part|
         ## and must only yield String values.
         assert("Body yielded non-string value #{part.inspect}") {
@@ -368,11 +494,28 @@ module Rack
         }
         yield part
       }
-      ## 
-      ## If the Body responds to #close, it will be called after iteration.
+      ##
+      ## The Body itself should not be an instance of String, as this will
+      ## break in Ruby 1.9.
+      ##
+      ## If the Body responds to +close+, it will be called after iteration.
       # XXX howto: assert("Body has not been closed") { @closed }
 
-      ## 
+
+      ##
+      ## If the Body responds to +to_path+, it must return a String
+      ## identifying the location of a file whose contents are identical
+      ## to that produced by calling +each+; this may be used by the
+      ## server as an alternative, possibly more efficient way to
+      ## transport the response.
+
+      if @body.respond_to?(:to_path)
+        assert("The file identified by body.to_path does not exist") {
+          ::File.exist? @body.to_path
+        }
+      end
+
+      ##
       ## The Body commonly is an Array of Strings, the application
       ## instance itself, or a File-like object.
     end
