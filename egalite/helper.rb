@@ -60,10 +60,19 @@ class FormHelper
     action = url ? " action='#{escape_html(url)}'" : ''
     raw "<form method='#{escape_html(method)}'#{action}#{opt(@form_opts)}>"
   end
-  def text(name, opts = {})
-    value = @data[name] || opts[:default]
+  def _text(value, name, opts)
     value = " value='#{escape_html(value)}'" if value
+    opts[:size] = 30 unless opts[:size]
     raw "<input type='text' name='#{expand_name(name)}'#{value}#{opt(opts)}/>"
+  end
+  def text(name, opts = {})
+    _text(@data[name] || opts[:default], name, opts)
+  end
+  def timestamp_text(name, opts = {})
+    # todo: enable locale
+    value = @data[name] || opts[:default]
+    value = value.strftime('%Y-%m-%d %H:%M:%S')
+    _text(value,name,opts)
   end
   def password(name, opts = {})
     value = @data[name] || opts[:default]
