@@ -184,7 +184,7 @@ class Environment
 end
 
 class Request
-  attr_accessor :session, :cookies
+  attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path, :path_params
 
@@ -363,6 +363,7 @@ class Handler
     
     before_filter_result = controller.before_filter
     if before_filter_result != true
+      return before_filter_result if before_filter_result.is_a?(Array)
       response = case before_filter_result.command
        when :delegate
         inner_dispatch(req, before_filter_result.param)
@@ -489,6 +490,10 @@ class Handler
       ereq = Request.new
       ereq.params = params
       ereq.cookies = req.cookies
+
+      authorization_keys = ['HTTP_AUTHORIZATION', 'X-HTTP_AUTHORIZATION', 'X_HTTP_AUTHORIZATION']
+      key = authorization_keys.detect { |key| rack_env.has_key?(key) }
+      ereq.authorization = rack_env[key] if key
       
       if @opts[:session_handler]
         ereq.session = @opts[:session_handler].new(@env,ereq.cookies, @opts[:session_opts] || {})
