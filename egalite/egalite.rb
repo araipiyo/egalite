@@ -10,6 +10,15 @@ require 'route'
 require 'session'
 require 'helper'
 
+module Rack
+  module Utils
+    def normalize_params(params,name,v)
+      params[name] = v
+    end
+    module_function :normalize_params
+  end
+end
+
 module Egalite
 
 class Logger
