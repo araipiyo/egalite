@@ -110,8 +110,21 @@ class FormHelper
   end
   def image
   end
-  def select
-    # どういうパターンを実装するか？
+  def select_by_association(name, options, optname, opts = {})
+    idname = (opts[:idname] || "id").to_sym
+    optionstr = options.map {|o|
+      flag = o[idname] == @data[name]
+      selected = flag ? ' selected' : ''
+      "<option value='#{o[idname]}'#{selected}>#{o[optname]}</option>"
+    }.join('')
+    
+    if opts[:nil]
+      selected = (@data[name] == nil) ? ' selected' : ''
+      optionstr = "<option value='' #{selected}>#{opts[:nil]}</option>" + optionstr
+      opts.delete(:nil)
+    end
+    
+    raw "<select name='#{expand_name(name)}'#{opt(opts)}>#{optionstr}</select>"
   end
 end
 
