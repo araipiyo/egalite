@@ -484,6 +484,7 @@ class Handler
       params = StringifyHash.new
       req.params.each { |k,v|
 #        raise 'egalite: no multiple query parameter allowed in same keyword.' if v.is_a?(Array)
+         next unless k
          frags = k.split(/[\]\[]{1,2}/)
          last = frags.pop
          list = params
