@@ -1,4 +1,5 @@
 # I stole it from ActiveSupport library of Ruby on Rails
+# (MIT License)
 
 class Object
   # An object is blank if it's nil, empty, or a whitespace string.

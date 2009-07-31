@@ -171,8 +171,6 @@ end
 
 class EgaliteError < RuntimeError
 end
-class SecurityError < EgaliteError
-end
 class EgaliteResponse
   attr_accessor :command
   attr_accessor :param
