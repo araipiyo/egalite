@@ -10,6 +10,8 @@ require 'route'
 require 'session'
 require 'helper'
 
+require 'time'
+
 module Rack
   module Utils
     def normalize_params(params,name,v)
@@ -259,6 +261,9 @@ class Handler
     action = method if action.blank?
     action.downcase!
     action.gsub!(/[^0-9a-z_]/,'')
+    
+    return nil if action == ""
+    
     Controller.new.methods.each { |s| raise SecurityError if action == s }
     
     controllername ||= ''
