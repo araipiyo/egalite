@@ -39,7 +39,7 @@ class SessionSequel < Session
     table = opts[:table_name] || :sessions
     
     db.create_table(table) {
-      primary_key :id, :serial
+      primary_key :id, :integer, :auto_increment => true
       column :mac, :varchar
       column :updated_at, :timestamp
     }
