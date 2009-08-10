@@ -128,7 +128,7 @@ class Route
           controller_exist = pathary.size
           params.delete(:controller)
         when :action
-          pathary << params[:action] || @action
+          pathary << (params[:action] || @action)
           action_exist = true
           params.delete(:action)
         when :param
@@ -145,7 +145,7 @@ class Route
         when :controller_fix
           next
         when :params
-          ary = params[:params] || []
+          ary = (params[:params] || [])
           if ary.respond_to?(:map)
             pathary += ary.map { |s| s.to_s }
           else
