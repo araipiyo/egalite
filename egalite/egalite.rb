@@ -216,7 +216,8 @@ class Handler
 
     @logger = Logger.new
     
-    @template_path = 'pages/'
+    @template_path = opts[:template_path] || 'pages/'
+    @template_path << '/' if @template_path[-1..-1] != '/'
     @template_engine = HTMLTemplate
     
     @notfound_template = nil

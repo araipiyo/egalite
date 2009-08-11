@@ -19,6 +19,15 @@ class TestController < Egalite::Controller
   def exception
     raise
   end
+  def notfoundtest
+    notfound
+  end
+  def delegatetest
+    delegate(:action => :test)
+  end
+  def test
+    "delegated"
+  end
 end
 
 class T_Handler < Test::Unit::TestCase
@@ -38,6 +47,15 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.ok?
     assert last_response.body =~ /okay/
     assert last_response.content_type =~ /text\/html/i
+  end
+  def test_notfound
+    get "/test/notfoundtest"
+    assert last_response.not_found?
+  end
+  def test_delegate
+    get "/test/delegatetest"
+    assert last_response.ok?
+    assert last_response.body =~ /delegated/
   end
 end
 
