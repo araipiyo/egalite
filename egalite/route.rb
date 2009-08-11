@@ -43,6 +43,8 @@ class Route
     ])
     routes
   end
+
+
   def match(path)
     path.sub!(/^\/+/,'')
     pathary = path.to_s.split('/')
@@ -101,10 +103,13 @@ class Route
     @prefix = prefix.join('/')
     [controller, action, path_params, params]
   end
+
+
   def escape(s)
     Rack::Utils.escape(s)
   end
-  def url_for(params)
+
+  def get_path_and_params_from_params(params)
     route = @route || []
     pathary = []
     controller_exist = false
@@ -168,6 +173,12 @@ class Route
     end
     pathary = pathary.compact.map { |frag| escape(frag) }
     path = "/" + pathary.join('/').sub(/\/+$/,'').sub(/^\//,'')
+    
+    [path, params, pathary]
+  end
+
+  def url_for(params)
+    (path, params) = get_path_and_params_from_params(params)
     if params and params.size > 0
       q = []
       params.each { |k,v|
@@ -184,6 +195,8 @@ class Route
     end
     path
   end
+
+
   def link_to(title, params)
     "<a href='#{url_for(params)}'>#{title}</a>"
   end

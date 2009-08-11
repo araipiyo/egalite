@@ -336,35 +336,12 @@ class Handler
   end
   
   def inner_dispatch(req, values)
-    # recursive call to handle include tag or delegate.
+    # recursive controller call to handle include tag or delegate.
+    stringified = StringifyHash.create(values)
+    (path, params) = req.route.get_path_and_params_from_params(stringified)
     newreq = req.clone
-    values = StringifyHash.create(values)
-    if values[:controller]
-      if values[:controller] =~ /^\//
-        newreq.controller = values[:controller]
-      else
-        cont_path = (req.controller.split('/'))[0..-2]
-        cont_path << values[:controller]
-        newreq.controller = cont_path.join('/')
-      end
-    else
-      newreq.controller = req.controller
-    end
-    path_params = []
-    action = values[:action].to_s
-    if action.split('/').size > 1
-      a = action.split('/')
-      action = a[0]
-      path_params += a[1..-1]
-    end
-    path_params += values[:path_params] || []
-    newreq.action = action
-    newreq.params = req.params.merge(values)
-    newreq.path_params = path_params.flatten
-    newreq.path = path_params.join('/')
-    (cont, act) = get_controller(newreq.controller, newreq.action, 'GET')
-    raise "Egalite::Handler#inner_dispatch: controller or HTML not found: #{newreq.controller} #{newreq.action}" unless cont
-    run_controller(cont, act, newreq)
+    newreq.params = params
+    dispatch(path, params, 'GET', newreq)
   end
 
  public

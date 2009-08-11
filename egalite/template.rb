@@ -188,6 +188,7 @@ class HTMLTemplate
     if block_given?
       html.gsub!(RE_INCLUDE) {
         attrs = parse_tag_attributes($1)
+        attrs.each { |k,v| attrs[k[1..-1]] = v if k =~ /^\:/ }
         yield(attrs)
       }
       parent = nil
