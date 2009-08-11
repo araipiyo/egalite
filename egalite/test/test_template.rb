@@ -34,5 +34,6 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body !~ /unlesstrue/
     assert last_response.body =~ /unlessfalse/
     assert last_response.body =~ %r|<a\s+href='/foo/bar/1\?hoge=piyo'\s*>|
+    assert last_response.body =~ %r|<form action='/foo/bar/1\?hoge=piyo'\s+method='post'\s*>|
   end
 end
