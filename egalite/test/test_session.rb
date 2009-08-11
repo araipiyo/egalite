@@ -77,6 +77,7 @@ class T_Session < Test::Unit::TestCase
   def assume_not_implemented
     begin
       yield
+      assert false
     rescue Exception => e
       assert e.is_a?(NotImplementedError)
     end

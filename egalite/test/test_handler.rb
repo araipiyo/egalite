@@ -5,8 +5,6 @@ require 'rubygems'
 require 'test/unit'
 require 'egalite'
 
-require 'app/app'
-
 require 'rack/test'
 
 ShowException = true
@@ -28,10 +26,6 @@ class T_Handler < Test::Unit::TestCase
 
   def app
     Egalite::Handler.new
-  end
-  def test_default_controller
-    get "/"
-    assert last_response.ok?
   end
   def test_exception
     get "/test/exception"
