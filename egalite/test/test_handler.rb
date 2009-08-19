@@ -7,8 +7,7 @@ require 'egalite'
 
 require 'rack/test'
 
-ShowException = true
-RouteDebug = false
+require 'setup'
 
 class TestController < Egalite::Controller
   def parameters

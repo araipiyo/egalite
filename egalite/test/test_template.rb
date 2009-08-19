@@ -6,8 +6,7 @@ require 'egalite'
 
 require 'rack/test'
 
-ShowException = true
-RouteDebug = false
+require 'setup'
 
 class TemplateController < Egalite::Controller
   def get

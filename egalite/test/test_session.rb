@@ -7,8 +7,7 @@ require 'sequel'
 
 require 'rack/test'
 
-ShowException = true
-RouteDebug = false
+require 'setup'
 
 class SessionController < Egalite::Controller
   def login(id)

@@ -40,8 +40,8 @@ class Controller
   def before_filter
     true
   end
-  def after_filter
-    true
+  def after_filter(response)
+    response
   end
   
   # accessors
@@ -418,7 +418,7 @@ class Handler
     return result
   end
   
-  def dispatch(path, params, method, req)
+  def dispatch(path, params, method, req, first_call = false)
     # routing
     (controller_name, action_name, path_params, prmhash) = nil
     (controller, action) = nil
@@ -448,7 +448,12 @@ class Handler
     # todo: language handling (by pathinfo?)
     # todo: session handling (by pathinfo?)
     
-    run_controller(controller, action, req)
+    res = run_controller(controller, action, req)
+    
+    if first_call
+      controller.after_filter(res.to_a)
+    end
+    res
   end
 
   def call(rack_env)
@@ -493,7 +498,7 @@ class Handler
       
       # todo: language handling (by cookie/header)
       
-      res = dispatch(req.path_info, params, req.request_method, ereq)
+      res = dispatch(req.path_info, params, req.request_method, ereq, true)
       res = res.to_a
 
       puts "after-cookie: #{res[1]['Set-Cookie'].inspect}" if @opts[:cookie_debug]

@@ -6,8 +6,7 @@ require 'egalite'
 
 require 'rack/test'
 
-ShowException = true
-RouteDebug = false
+require 'setup'
 
 class DefaultController < Egalite::Controller
   def get(s)
