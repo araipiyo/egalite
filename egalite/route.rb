@@ -133,7 +133,7 @@ class Route
           controller_exist = pathary.size
           params.delete(:controller)
         when :action
-          pathary << (params[:action] || @action)
+          pathary << (params[:action] || (controller_exist ? nil : @action))
           action_exist = true
           params.delete(:action)
         when :param

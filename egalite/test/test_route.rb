@@ -51,6 +51,9 @@ class RouteController < Egalite::Controller
   def urltest3
     url_for(:controller => 'noactionroute', :action => :pathtest, :id => '1', :hoge => :piyo)
   end
+  def urltest4
+    url_for(:controller => :route, :action => nil, :id => 1)
+  end
 end
 
 class OneSlashController < Egalite::Controller
@@ -152,6 +155,9 @@ class T_Session < Test::Unit::TestCase
     get "/route/urltest3"
     assert last_response.ok?
     assert last_response.body == "/noactionroute/pathtest/1?hoge=piyo"
+    get "/route/urltest4"
+    assert last_response.ok?
+    assert last_response.body == "/route/1"
     get "/one/slash/urltest"
     assert last_response.ok?
     assert last_response.body == "/pathtest/1?hoge=piyo"
