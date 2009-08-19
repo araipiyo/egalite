@@ -1,6 +1,9 @@
 #!ruby -Ku
 
+$KCODE = 'UTF8'
+
 $LOAD_PATH << File.join(File.dirname(__FILE__), '..')
+$LOAD_PATH << File.join(File.dirname(__FILE__))
 
 require 'rubygems'
 require 'test/unit'
