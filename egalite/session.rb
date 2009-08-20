@@ -52,19 +52,20 @@ class SessionSequel < Session
     
     super(env, cookies, opts)
   end
-  def cookie(sstr)
+  def cookie
     {
-      :value => sstr,
+      :value => @sstr,
       :expires => Time.now + @expire_after,
       :path => @path,
       :secure => @secure
     }
   end
-  def load
-    sstr = @cookies[@cookie_name]
-    sstr = sstr[0] if sstr.is_a?(Array)
-    return false unless sstr and sstr.size > 0
-    (sid,mac) = sstr.split(/_/)
+  def sstr
+    @sstr
+  end
+  def _load(_sstr)
+    return false unless _sstr and _sstr.size > 0
+    (sid,mac) = _sstr.split(/_/)
 
     sid = sid.to_i
     return false if sid <= 0
@@ -77,13 +78,22 @@ class SessionSequel < Session
     updated = rec[:updated_at]
     return false if Time.now > (updated + @expire_after)
     
+    @sstr = _sstr
     @hash = rec
     @sid = sid
     @mac = mac
     @loaded = true
-    @cookies[@cookie_name] = cookie(sstr)
+    @cookies[@cookie_name] = cookie
 
     true
+  end
+  def load_from_param(_sstr)
+    _load(_sstr)
+  end
+  def load
+    _sstr = @cookies[@cookie_name]
+    _sstr = _sstr[0] if _sstr.is_a?(Array)
+    _load(_sstr)
   end
   def create(hash = nil)
     @sid = @db[@table] << {}
@@ -91,8 +101,8 @@ class SessionSequel < Session
     hash ||= {}
     @db[@table].filter(:id => @sid).update(hash.merge(:mac => @mac,:updated_at => Time.now))
 
-    sstr = "#@sid" + "_#@mac"
-    @cookies[@cookie_name] = cookie(sstr)
+    @sstr = "#@sid" + "_#@mac"
+    @cookies[@cookie_name] = cookie
     @loaded = true
 
     true

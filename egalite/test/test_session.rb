@@ -73,19 +73,11 @@ class T_Session < Test::Unit::TestCase
     assert last_response.headers['location'] == "/session/login"
     assert last_response.headers['set-cookie'].blank?
   end
-  def assume_not_implemented
-    begin
-      yield
-      assert false
-    rescue Exception => e
-      assert e.is_a?(NotImplementedError)
-    end
-  end
   def test_abstract_session
     session = Egalite::Session.new(nil,nil)
-    assume_not_implemented { session.create }
-    assume_not_implemented { session.load }
-    assume_not_implemented { session.save }
-    assume_not_implemented { session.delete }
+    assert_raise(NotImplementedError) { session.create }
+    assert_raise(NotImplementedError) { session.load }
+    assert_raise(NotImplementedError) { session.save }
+    assert_raise(NotImplementedError) { session.delete }
   end
 end
