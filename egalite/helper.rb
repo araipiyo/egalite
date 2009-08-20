@@ -20,6 +20,10 @@ class TableHelper
   end
  public
   def self.table_by_hash(keys, header, content, table_opts = {})
+    unless keys.size == header.size
+      raise ArgumentError, "key and header count mismatch"
+    end
+
     _table(header, content, table_opts) { |line|
       keys.map { |key| "<td>#{escape_html(line[key])}</td>"}.join
     }
@@ -40,17 +44,21 @@ class FormHelper
     s = "#{@param_name}[#{s}]" if @param_name
     escape_html(s)
   end
-  def opt(opts)
-    opts.map { |k,v|
-      next "" if [:default,:checked,:selected].member?(k)
-      " #{escape_html(k)}='#{escape_html(v)}'"
-    }.join
-  end
   def raw(s)
     NonEscapeString.new(s)
   end
 
+ public # export just for testing
+
+  def opt(opts)
+    opts.map { |k,v|
+      next "" if [:default,:checked,:selected, :nil].member?(k)
+      " #{escape_html(k)}='#{escape_html(v)}'"
+    }.join
+  end
+
  public
+
   def initialize(data = {}, param_name = nil, opts = {})
     @data = data
     @param_name = param_name
@@ -70,6 +78,7 @@ class FormHelper
   end
   def timestamp_text(name, opts = {})
     # todo: enable locale
+    # todo: could unify to text()
     value = @data[name] || opts[:default]
     value = value.strftime('%Y-%m-%d %H:%M:%S')
     _text(value,name,opts)
@@ -80,7 +89,7 @@ class FormHelper
     raw "<input type='password' name='#{expand_name(name)}'#{value}#{opt(opts)}/>"
   end
   def checkbox(name, value=nil, opts = {})
-    checked = (@data[name] || opts[:default] || opts[:checked]) ? " checked" : ''
+    checked = (@data[name] || opts[:default] || opts[:checked]) ? " checked='checked'" : ''
     checked = '' if @data[name] == false
     value ||= "true"
     value = " value='#{value}'"
@@ -90,7 +99,7 @@ class FormHelper
   def radio(name, choice, opts = {})
     selected = (@data[name] == choice)
     selected = (opts[:default] == choice) || opts[:selected] if @data[name] == nil
-    selected = selected ? " selected" : ''
+    selected = selected ? " selected='selected'" : ''
     
     n = expand_name(name)
     c = escape_html(choice)
@@ -114,14 +123,13 @@ class FormHelper
     idname = (opts[:idname] || "id").to_sym
     optionstr = options.map {|o|
       flag = o[idname] == @data[name]
-      selected = flag ? ' selected' : ''
+      selected = flag ? " selected='selected'" : ""
       "<option value='#{o[idname]}'#{selected}>#{o[optname]}</option>"
     }.join('')
     
     if opts[:nil]
-      selected = (@data[name] == nil) ? ' selected' : ''
+      selected = (@data[name] == nil) ? "selected='selected'" : ''
       optionstr = "<option value='' #{selected}>#{opts[:nil]}</option>" + optionstr
-      opts.delete(:nil)
     end
     
     raw "<select name='#{expand_name(name)}'#{opt(opts)}>#{optionstr}</select>"
