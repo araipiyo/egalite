@@ -32,11 +32,11 @@ class StringifyHash < Hash
   alias_method :member?, :key?
 
   def fetch(key, *extras)
-    super(convert_key(key), *extras)
+    super(stringify(key), *extras)
   end
 
   def values_at(*indices)
-    indices.collect {|key| self[convert_key(key)]}
+    indices.collect {|key| self[key]}
   end
 
   def dup
