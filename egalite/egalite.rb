@@ -308,7 +308,7 @@ class Handler
       ]
     end
     html << "</body></html>"
-    [500, {'Content-Type' => 'text/plain'}, [html.join("\n")]]
+    [500, {'Content-Type' => 'text/html'}, [html.join("\n")]]
   end
   
   def set_cookies_to_response(response,req)
