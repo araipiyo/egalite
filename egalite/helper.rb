@@ -92,9 +92,16 @@ class FormHelper
     checked = (@data[name] || opts[:default] || opts[:checked]) ? " checked='checked'" : ''
     checked = '' if @data[name] == false
     value ||= "true"
-    value = " value='#{value}'"
+    value = " value='#{escape_html(value)}'"
+    
     name = expand_name(name)
-    raw "<input type='checkbox' name='#{name}'#{value}#{checked}#{opt(opts)}/>"
+    
+    ucv = opts[:uncheckedvalue]
+    ucv ||= "false"
+    hidden = "<input type='hidden' name='#{name}' value='#{escape_html(ucv)}'/>"
+    hidden = "" if opts[:nohidden]
+    
+    raw "#{hidden}<input type='checkbox' name='#{name}'#{value}#{checked}#{opt(opts)}/>"
   end
   def radio(name, choice, opts = {})
     selected = (@data[name] == choice)
