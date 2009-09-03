@@ -1,6 +1,33 @@
 
 module Egalite
 
+module HTMLTagBuilder
+  def escape_html(s)
+    s.is_a?(NonEscapeString) ? s : NonEscapeString.new(Rack::Utils.escape_html(s))
+  end
+  def tag(name , soc, attributes)
+    close = soc == :close ? '/' : ''
+    solo = soc == :solo ? '/' : ''
+    
+    atr = if attributes and not attributes.empty?
+      s = attributes.map { |k,v| "#{escape_html(k)}='#{escape_html(v)}'" }.join(' ')
+      " #{s}"
+    else
+      ""
+    end
+    NonEscapeString.new("<#{close}#{escape_html(name)}#{atr}#{solo}>")
+  end
+  def tag_solo(name, attributes)
+    tag(name, :solo, attributes)
+  end
+  def tag_open(name, attributes)
+    tag(name, :open, attributes)
+  end
+  def tag_close(name, attributes)
+    tag(name, :close, attributes)
+  end
+end
+
 class TableHelper
  private
   def self.opt(opts)
@@ -36,10 +63,9 @@ class TableHelper
 end
 
 class FormHelper
+  include HTMLTagBuilder
+
  private
-  def escape_html(s)
-    Rack::Utils.escape_html(s)
-  end
   def expand_name(s)
     s = "#{@param_name}[#{s}]" if @param_name
     escape_html(s)
@@ -56,6 +82,13 @@ class FormHelper
       " #{escape_html(k)}='#{escape_html(v)}'"
     }.join
   end
+  def opt_as_hash(opts)
+    o = opts.dup
+    o.each_key { |k|
+      o.delete(k) if [:default,:checked,:selected, :nil].member?(k)
+    }
+    o
+  end
 
  public
 
@@ -65,13 +98,18 @@ class FormHelper
     @form_opts = opts
   end
   def form(method, url=nil)
-    action = url ? " action='#{escape_html(url)}'" : ''
-    raw "<form method='#{escape_html(method)}'#{action}#{opt(@form_opts)}>"
+    attrs = opt_as_hash(@form_opts)
+    attrs[:method] = method
+    attrs[:action] = url if url
+    tag_open(:form,attrs)
   end
   def _text(value, name, opts)
-    value = " value='#{escape_html(value)}'" if value
-    opts[:size] = 30 unless opts[:size]
-    raw "<input type='text' name='#{expand_name(name)}'#{value}#{opt(opts)}/>"
+    attrs = opt_as_hash(opts)
+    attrs[:value] = value if value
+    attrs[:size] ||= 30
+    attrs[:type] = 'text'
+    attrs[:name] = expand_name(name)
+    tag_solo(:input, attrs)
   end
   def text(name, opts = {})
     _text(@data[name] || opts[:default], name, opts)
@@ -85,44 +123,56 @@ class FormHelper
   end
   def password(name, opts = {})
     value = @data[name] || opts[:default]
-    value = " value='#{escape_html(value)}'" if value
-    raw "<input type='password' name='#{expand_name(name)}'#{value}#{opt(opts)}/>"
+    attrs = opt_as_hash(opts)
+    attrs[:value] = value if value
+    attrs[:type] = "password"
+    attrs[:name] = expand_name(name)
+    tag_solo(:input,attrs)
   end
-  def checkbox(name, value=nil, opts = {})
-    checked = (@data[name] || opts[:default] || opts[:checked]) ? " checked='checked'" : ''
-    checked = '' if @data[name] == false
-    value ||= "true"
-    value = " value='#{escape_html(value)}'"
+  def checkbox(name, value="true", opts = {})
+    checked = (@data[name] || opts[:default] || opts[:checked])
+    checked = false if @data[name] == false
     
-    name = expand_name(name)
+    attr_cb = opt_as_hash(opts)
+    attr_cb[:type] = 'checkbox'
+    attr_cb[:name] = expand_name(name)
+    attr_cb[:value] = value
+    attr_cb[:checked] = "checked" if checked
+
+    ucv = opts[:uncheckedvalue] || 'false'
+    attr_h = {:type => 'hidden', :name => expand_name(name), :value => ucv}
+    hidden = opts[:nohidden] ? '' : tag_solo(:input, attr_h)
     
-    ucv = opts[:uncheckedvalue]
-    ucv ||= "false"
-    hidden = "<input type='hidden' name='#{name}' value='#{escape_html(ucv)}'/>"
-    hidden = "" if opts[:nohidden]
-    
-    raw "#{hidden}<input type='checkbox' name='#{name}'#{value}#{checked}#{opt(opts)}/>"
+    raw "#{hidden}#{tag_solo(:input, attr_cb)}"
   end
   def radio(name, choice, opts = {})
     selected = (@data[name] == choice)
     selected = (opts[:default] == choice) || opts[:selected] if @data[name] == nil
-    selected = selected ? " selected='selected'" : ''
     
-    n = expand_name(name)
-    c = escape_html(choice)
-    raw "<input type='radio' name='#{n}' value='#{c}'#{selected}#{opt(opts)}/>"
+    attrs = opt_as_hash(opts)
+    attrs[:selected] = 'selected' if selected
+    attrs[:name] = expand_name(name)
+    attrs[:value] = choice
+    attrs[:type] = 'radio'
+    
+    tag_solo(:input, attrs)
   end
   def textarea(name, opts = {})
     value = escape_html(@data[name] || opts[:default])
     raw "<textarea name='#{expand_name(name)}'#{opt(opts)}>#{value}</textarea>"
   end
   def file(name, opts = {})
-    raw "<input type='file' name='#{expand_name(name)}'#{opt(opts)}/>"
+    attrs = opt_as_hash(opts)
+    attrs[:name] = expand_name(name)
+    attrs[:type] = 'file'
+    tag_solo(:input, attrs)
   end
   def submit(value = nil, name = nil, opts = {})
-    name = " name='#{expand_name(name)}'" if name
-    value = " value='#{escape_html(value)}'" if value
-    raw "<input type='submit'#{name}#{value}#{opt(opts)}/>"
+    attrs = opt_as_hash(opts)
+    attrs[:name] = expand_name(name) if name
+    attrs[:value] = value if value
+    attrs[:type] = 'submit'
+    tag_solo(:input, attrs)
   end
   def image
   end
@@ -130,13 +180,14 @@ class FormHelper
     idname = (opts[:idname] || "id").to_sym
     optionstr = options.map {|o|
       flag = o[idname] == @data[name]
-      selected = flag ? " selected='selected'" : ""
-      "<option value='#{o[idname]}'#{selected}>#{o[optname]}</option>"
+      a = {:value => o[idname]}
+      a[:selected] = 'selected' if flag
+      "#{tag_open(:option, a)}#{escape_html(o[optname])}</option>"
     }.join('')
     
     if opts[:nil]
       selected = (@data[name] == nil) ? "selected='selected'" : ''
-      optionstr = "<option value='' #{selected}>#{opts[:nil]}</option>" + optionstr
+      optionstr = "<option value='' #{selected}>#{escape_html(opts[:nil])}</option>" + optionstr
     end
     
     raw "<select name='#{expand_name(name)}'#{opt(opts)}>#{optionstr}</select>"
