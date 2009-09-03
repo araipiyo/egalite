@@ -99,7 +99,7 @@ class FormHelper
   end
   def form(method, url=nil)
     attrs = opt_as_hash(@form_opts)
-    attrs[:method] = method
+    attrs[:method] = method.to_s.upcase
     attrs[:action] = url if url
     tag_open(:form,attrs)
   end
@@ -175,6 +175,16 @@ class FormHelper
     tag_solo(:input, attrs)
   end
   def image
+  end
+  def select_by_array(name, options, opts = {})
+    optionstr = options.map {|o|
+      flag = o[0] == @data[name]
+      a = {:value => o[0]}
+      a[:selected] = 'selected' if flag
+      "#{tag_open(:option, a)}#{escape_html(o[1])}</option>"
+    }.join('')
+    
+    raw "<select name='#{expand_name(name)}'#{opt(opts)}>#{optionstr}</select>"
   end
   def select_by_association(name, options, optname, opts = {})
     idname = (opts[:idname] || "id").to_sym
