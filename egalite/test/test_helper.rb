@@ -163,7 +163,7 @@ class T_FormHelper < Test::Unit::TestCase
 
   def test_checkbox_should_be_checked_if_data_given
     f = FormHelper.new({:foo => "OK"})
-    i = X1(f.checkbox(:foo, "Bar"), "/input")
+    i = X1(f.checkbox(:foo, "Bar", :nohidden => true), "/input")
     assert_equal("Bar", i.attributes["value"])
     assert_equal("checked", i.attributes["checked"])
     assert_equal("foo", i.attributes["name"])
@@ -172,13 +172,13 @@ class T_FormHelper < Test::Unit::TestCase
 
   def test_checkbox_should_NOT_be_checked_unless_something_given
     f = FormHelper.new({:foo => "OK"})
-    i = X1(f.checkbox(:bar, "Bar"), "/input")
+    i = X1(f.checkbox(:bar, "Bar", :nohidden => true), "/input")
     assert_equal(nil, i.attributes["checked"])
   end
 
   def _test_checkbox_should_be_checked_if_opt_default_given(option_name)
     f = FormHelper.new({})
-    i = X1(f.checkbox(:foo, "Bar", {option_name => 'OK'}), "/input")
+    i = X1(f.checkbox(:foo, "Bar", {option_name => 'OK', :nohidden => true}), "/input")
     assert_equal("checked", i.attributes["checked"])
     assert_equal("foo", i.attributes["name"])
   end
