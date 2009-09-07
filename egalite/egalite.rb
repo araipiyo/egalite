@@ -40,7 +40,10 @@ class Controller
   def before_filter
     true
   end
-  def after_filter(response)
+  def after_filter_return_value(response) # right after controller
+    response
+  end
+  def after_filter(response) # after filter for final http output
     response
   end
   
@@ -101,6 +104,9 @@ class Controller
   end
   def raw(text)
     NonEscapeString.new(text)
+  end
+  def escape_html(s)
+    Rack::Utils.escape_html(s)
   end
   def table_by_array(header,content,opts={})
     TableHelper.table_by_array(header,content,opts)
@@ -376,6 +382,7 @@ class Handler
       args.size.upto(nargs-1) { args << nil }
     end
     values = profile(:controller) { controller.send(action,*args) }
+    values = controller.after_filter_return_value(values)
     
     # result handling
     result = if values.respond_to?(:command)

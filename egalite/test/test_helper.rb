@@ -153,6 +153,14 @@ class T_FormHelper < Test::Unit::TestCase
     assert_equal("foo", i.attributes["name"])
   end
 
+  def test_hidden_should_be_ok
+    f = FormHelper.new({:foo => "Foo"})
+    i = X1(f.hidden(:foo), "/input")
+    assert_equal("Foo", i.attributes["value"])
+    assert_equal("hidden", i.attributes["type"])
+    assert_equal("foo", i.attributes["name"])
+  end
+
   def test_password_should_be_ok
     f = FormHelper.new({:foo => "Foo"})
     i = X1(f.password(:foo), "/input")

@@ -129,6 +129,14 @@ class FormHelper
     attrs[:name] = expand_name(name)
     tag_solo(:input,attrs)
   end
+  def hidden(name, opts = {})
+    value = @data[name] || opts[:default]
+    attrs = opt_as_hash(opts)
+    attrs[:value] = value if value
+    attrs[:type] = "hidden"
+    attrs[:name] = expand_name(name)
+    tag_solo(:input,attrs)
+  end
   def checkbox(name, value="true", opts = {})
     checked = (@data[name] || opts[:default] || opts[:checked])
     checked = false if @data[name] == false
