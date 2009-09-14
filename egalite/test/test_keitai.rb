@@ -41,7 +41,7 @@ class MobileController < Egalite::Keitai::Controller
   end
 end
 
-class RedirectController < Egalite::Keitai::Redirector
+class RedirectorController < Egalite::Keitai::Redirector
 end
 
 class T_Keitai < Test::Unit::TestCase
@@ -83,8 +83,8 @@ class T_Keitai < Test::Unit::TestCase
     assert_match(%r|<a\s+href='(/mobile/get_userid\?sessionid=[0-9]+_[0-9a-f]+)'\s*>hoge</a>|,last_response.body)
     %r|<a\s+href='(/mobile/get_userid\?sessionid=[0-9]+_[0-9a-f]+)'\s*>hoge</a>| =~ last_response.body
     get_userid = $1
-    assert_match(%r|<a\s+href='(/redirect/[0-9a-zA-Z._-]+)'\s*>yahoo</a>|,last_response.body)
-    %r|<a\s+href='(/redirect/[0-9a-zA-Z._-]+)'\s*>yahoo</a>| =~ last_response.body
+    assert_match(%r|<a\s+href='(/redirector/[0-9a-zA-Z._-]+)'\s*>yahoo</a>|,last_response.body)
+    %r|<a\s+href='(/redirector/[0-9a-zA-Z._-]+)'\s*>yahoo</a>| =~ last_response.body
     redirector = $1
  	assert_match(%r|<form\s+action='/mobile/bar\?sessionid=[0-9]+_[0-9a-f]+'\s+method='GET'\s*>|, last_response.body)
  	
