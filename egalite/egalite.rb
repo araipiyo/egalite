@@ -549,7 +549,7 @@ end # module end
 class StaticController < Egalite::Controller
   def get
     path = req.path
-    path.gsub!(/[^0-9a-zA-Z() _-]/,'')
+    path.gsub!(/[^0-9a-zA-Z(). _-]/,'')
     if path.include?("..") or path =~ /^\//
       return [403, {"Content-Type" => "text/plain"}, ["Forbidden\n"]]
     end
