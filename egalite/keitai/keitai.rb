@@ -49,10 +49,8 @@ module Egalite
           url_after = modify_url_for_keitai(url,sstr)
           s.sub(url,url_after)
         }
-        body.gsub!(/<form.+?action=(?:'(.+?)'|"(.+?)").+?>/) { |s|
-          url = ($1 || $2)
-          url_after = modify_url_for_keitai(url,sstr)
-          s.sub(url,url_after)
+        body.gsub!(/(<form.+?>)/) { |s|
+          s + "\n<input type='hidden' name='sessionid' value='#{sstr}'/>\n"
         }
       end
       def redirector_url
