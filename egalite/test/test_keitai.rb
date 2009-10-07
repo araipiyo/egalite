@@ -86,7 +86,7 @@ class T_Keitai < Test::Unit::TestCase
     assert_match(%r|<a\s+href='(/redirector/[0-9a-zA-Z._-]+)'\s*>yahoo</a>|,last_response.body)
     %r|<a\s+href='(/redirector/[0-9a-zA-Z._-]+)'\s*>yahoo</a>| =~ last_response.body
     redirector = $1
- 	assert_match(%r|<form\s+action='/mobile/bar\?sessionid=[0-9]+_[0-9a-f]+'\s+method='GET'\s*>|, last_response.body)
+ 	assert_match(%r|<input.+?value='[0-9]+_[0-9a-f]+'.+?>|, last_response.body)
  	
     clear_cookies
     
