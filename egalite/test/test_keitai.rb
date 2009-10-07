@@ -97,7 +97,7 @@ class T_Keitai < Test::Unit::TestCase
     clear_cookies
 
     get(redirector)
-    assert last_response.redirect?
-    assert_match(%r|http://www.yahoo.com|, last_response.location)
+    assert last_response.ok?
+    assert_match(%r|http://www.yahoo.com|, last_response.body)
   end
 end

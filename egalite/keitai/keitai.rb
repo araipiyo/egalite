@@ -94,7 +94,8 @@ module Egalite
     
     class Redirector < Egalite::Controller
       def get(crypted_url)
-        redirect_to URLSession.decrypt(crypted_url, redirector_crypt_key)
+        url = URLSession.decrypt(crypted_url, redirector_crypt_key)
+        "<html><body>外部サイトへ移動しようとしています。以下のリンクをクリックしてください。<br/><br/><a href='#{url}'>リンク</a></body></html>"
       end
       def redirector_crypt_key
         "Example1"
