@@ -95,7 +95,7 @@ module Egalite
     class Redirector < Egalite::Controller
       def get(crypted_url)
         url = URLSession.decrypt(crypted_url, redirector_crypt_key)
-        "<html><body>ŠO•”ƒTƒCƒg‚ÖˆÚ“®‚µ‚æ‚¤‚Æ‚µ‚Ä‚¢‚Ü‚·BˆÈ‰º‚ÌƒŠƒ“ƒN‚ðƒNƒŠƒbƒN‚µ‚Ä‚­‚¾‚³‚¢B<br/><br/><a href='#{url}'>ƒŠƒ“ƒN</a></body></html>"
+        "<html><body>å¤–éƒ¨ã‚µã‚¤ãƒˆã¸ç§»å‹•ã—ã‚ˆã†ã¨ã—ã¦ã„ã¾ã™ã€‚ä»¥ä¸‹ã®ãƒªãƒ³ã‚¯ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦ãã ã•ã„ã€‚<br/><br/><a href='#{url}'>ãƒªãƒ³ã‚¯</a></body></html>"
       end
       def redirector_crypt_key
         "Example1"
