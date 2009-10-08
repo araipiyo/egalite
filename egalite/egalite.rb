@@ -322,7 +322,7 @@ class Handler
     req.cookies.each { |k,v|
       cookie_opts = @opts[:cookie_opts] || {}
       unless v.is_a?(Hash)
-        v = {
+        req.cookies[k] = {
           :value => v.to_s,
           :expires => Time.now + (cookie_opts[:expire_after] || 3600),
           :path => cookie_opts[:path] || '/',
