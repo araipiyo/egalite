@@ -227,7 +227,8 @@ class Handler
     @template_engine = HTMLTemplate
     
     @notfound_template = nil
-    @error_template = nil
+    @error_template = opts[:error_template]
+    @exception_log_table = opts[:exception_log_table]
     
     @profile = {}
   end
@@ -469,9 +470,10 @@ class Handler
     res = nil
     @profile = {}
     
+    req = Rack::Request.new(rack_env)
+    
     profile(:total) {
      begin
-      req = Rack::Request.new(rack_env)
       
       # parameter handling
       params = StringifyHash.new
@@ -518,13 +520,26 @@ class Handler
       
      rescue Exception => e
       begin
-        # error handling here
-        
         # write error log
+        logid = nil
+        if @exception_log_table
+          severity = 'exception'
+          severity = 'security' if e.is_a?(SecurityError)
+          
+          text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
+          
+          logid = (@db[@exception_log_table] << {:severity => severity, :ipaddress => req.ip, :text => text})
+        end
         
         # show exception
         
         if @error_template
+          values = {}
+          values[:logid] = logid if logid
+          values[:exception] = e.to_s
+          values[:backtrace] = e.backtrace
+          html = HTMLTemplate.new.handleTemplate(@error_template.dup,values)
+          res = [500, {"Content-type"=>"text/html; charset=utf-8"}, [html]]
         else
           res = display_internal_server_error(e)
         end

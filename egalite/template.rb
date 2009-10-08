@@ -146,6 +146,7 @@ class HTMLTemplate
     html.gsub!(RE_A) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['href']
+      next s unless @controller
       
       (colons, noncolons) = attr_colon(attrs)
       # when :hoge=$foo, expand hash parameter ['foo']
@@ -161,6 +162,7 @@ class HTMLTemplate
     html.gsub!(RE_FORM) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['action']
+      next s unless @controller
       
       (colons, noncolons) = attr_colon(attrs)
       next s if colons.empty?
