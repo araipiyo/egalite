@@ -32,6 +32,7 @@ module Egalite
       end
       def modify_url_for_keitai(url,sstr)
         uri = URI.parse(URI.escape(url))
+        return url if not uri.scheme.blank? and uri.scheme !~ /(http|https)/
         if uri.host and uri.host !~ my_host
           crypted_url = URLSession.encrypt(url,redirector_crypt_key)
           File.join(redirector_url,crypted_url)

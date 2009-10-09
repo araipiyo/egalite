@@ -80,6 +80,8 @@ class T_Keitai < Test::Unit::TestCase
     
     get(location)
     assert last_response.ok?
+    assert_match(%r|<a\s+href='mailto:arai\@example\.com'\s*>mail</a>|,last_response.body)
+    assert_match(%r|<a\s+href='tel:03-1234-5678'\s*>tel</a>|,last_response.body)
     assert_match(%r|<a\s+href='(/mobile/get_userid\?sessionid=[0-9]+_[0-9a-f]+)'\s*>hoge</a>|,last_response.body)
     %r|<a\s+href='(/mobile/get_userid\?sessionid=[0-9]+_[0-9a-f]+)'\s*>hoge</a>| =~ last_response.body
     get_userid = $1
