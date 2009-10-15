@@ -1,5 +1,5 @@
 
-require 'digest/md5'
+require 'openssl'
 
 module Egalite
 class Session
@@ -97,7 +97,7 @@ class SessionSequel < Session
   end
   def create(hash = nil)
     @sid = @db[@table] << {}
-    @mac = Digest::MD5.hexdigest("#@sid#@MACkey")
+    @mac = OpenSSL::Random.random_bytes(8).unpack('h*')[0]
     hash ||= {}
     @db[@table].filter(:id => @sid).update(hash.merge(:mac => @mac,:updated_at => Time.now))
 
