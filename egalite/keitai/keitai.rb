@@ -34,6 +34,7 @@ module Egalite
         uri = URI.parse(URI.escape(url))
         return url if not uri.scheme.blank? and uri.scheme !~ /(http|https)/
         if uri.host and uri.host !~ my_host
+          p url
           crypted_url = URLSession.encrypt(url,redirector_crypt_key)
           File.join(redirector_url,crypted_url)
         else
@@ -96,7 +97,7 @@ module Egalite
     class Redirector < Egalite::Controller
       def get(crypted_url)
         url = URLSession.decrypt(crypted_url, redirector_crypt_key)
-        "<html><body>外部サイトへ移動しようとしています。以下のリンクをクリックしてください。<br/><br/><a href='#{url}'>リンク</a></body></html>"
+        "<html><body>外部サイトへ移動しようとしています。以下のリンクをクリックしてください。<br/><br/><a href='#{URI.escape(url)}'>リンク</a></body></html>"
       end
       def redirector_crypt_key
         "Example1"
