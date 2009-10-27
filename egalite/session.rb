@@ -85,7 +85,7 @@ class SessionSequel < Session
     @loaded = true
     @cookies[@cookie_name] = cookie
     
-    @db[@table].filter(:id => sid).update(:updated_at => :now)
+    @db[@table].filter(:id => sid).update(:updated_at => 'now')
 
     true
   end
