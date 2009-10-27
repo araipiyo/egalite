@@ -338,7 +338,7 @@ class Handler
       s += "; secure" if v[:secure]
       s
     }
-    s = a.join(',')
+    s = a.join("\n")
     response[1]['Set-Cookie'] = s
   end
   
