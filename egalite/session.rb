@@ -84,6 +84,8 @@ class SessionSequel < Session
     @mac = mac
     @loaded = true
     @cookies[@cookie_name] = cookie
+    
+    @db[@table].filter(:id => sid).update(:updated_at => :now)
 
     true
   end
