@@ -103,6 +103,9 @@ class FormHelper
     attrs[:action] = url if url
     tag_open(:form,attrs)
   end
+  def close
+    tag_close(:form,nil)
+  end
   def _text(value, name, opts)
     attrs = opt_as_hash(opts)
     attrs[:value] = value if value
