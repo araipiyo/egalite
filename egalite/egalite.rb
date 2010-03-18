@@ -366,12 +366,8 @@ class Handler
         inner_dispatch(req, before_filter_result.param)
        when :redirect
         redirect(before_filter_result.param)
-       when :template
-        # todo
        when :notfound
         display_notfound
-       when :csv
-        # todo
       end
       set_cookies_to_response(response,req)
       return response
@@ -392,12 +388,8 @@ class Handler
         inner_dispatch(req, values.param)
        when :redirect
         redirect(values.param)
-       when :template
-        # todo
        when :notfound
         display_notfound
-       when :csv
-        # todo
       end
     elsif values.is_a?(Array)
       values
@@ -405,6 +397,8 @@ class Handler
       [200,{'Content-Type' => "text/html"},[values]]
     elsif values.is_a?(Rack::Response)
       values.to_a
+    elsif values == nil
+      raise "egalite error: controller returned nil as a response."
     else
       htmlfile = controller.template_file
       unless htmlfile

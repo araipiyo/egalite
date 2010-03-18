@@ -27,7 +27,20 @@ class TestController < Egalite::Controller
   def test
     "delegated"
   end
+  def niltest
+    nil
+  end
 end
+class BeforefilterController < TestController
+  def before_filter
+    case params[:test]
+      when /notfound/: notfound
+      when /delegate/: delegate(:controller => :test,:action => :test)
+      else redirect(:action => :test)
+    end
+  end
+end
+
 
 class T_Handler < Test::Unit::TestCase
   include Rack::Test::Methods
@@ -37,7 +50,6 @@ class T_Handler < Test::Unit::TestCase
   end
   def test_exception
     get "/test/exception"
-    assert last_response.ok? == false
     assert last_response.server_error?
     assert last_response.body =~ /Exception/
   end
@@ -55,6 +67,22 @@ class T_Handler < Test::Unit::TestCase
     get "/test/delegatetest"
     assert last_response.ok?
     assert last_response.body =~ /delegated/
+  end
+  def test_nil
+    get "/test/niltest"
+    assert last_response.server_error?
+    assert last_response.body =~ /Exception/
+    assert last_response.body =~ /nil/
+  end
+  def test_beforefilter
+    get "/beforefilter/niltest"
+    assert last_response.redirect?
+    assert last_response.headers['location'] == "/beforefilter/test"
+    get "/beforefilter/niltest?test=delegate"
+    assert last_response.ok?
+    assert last_response.body =~ /delegated/
+    get "/beforefilter/niltest?test=notfound"
+    assert last_response.not_found?
   end
 end
 
