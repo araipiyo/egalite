@@ -14,7 +14,7 @@ module Egalite
         cipher.pkcs5_keyivgen(key)
         cipher.encrypt
         e = cipher.update(s) + cipher.final
-        Base64.encode64(e).tr('+/=','_.-').chomp!
+        Base64.encode64(e).tr('+/=','_.-').gsub!("\n","")
       end
       def self.decrypt(s,key)
         cipher = OpenSSL::Cipher.new("bf-cbc")
