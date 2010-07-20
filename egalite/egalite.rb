@@ -202,9 +202,14 @@ class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path, :path_params
+  attr_reader :rack_request
 
-  def initialize
+  def initialize(values = {})
     @cookies = []
+    @rack_request = values[:rack_request]
+  end
+  def ipaddr
+    @rack_request.ip
   end
 end
 
@@ -486,7 +491,9 @@ class Handler
 
       puts "before-cookie: #{req.cookies.inspect}" if @opts[:cookie_debug]
       
-      ereq = Request.new
+      ereq = Request.new(
+        :rack_request => req
+      )
       ereq.params = params
       ereq.cookies = req.cookies
 

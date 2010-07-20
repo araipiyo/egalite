@@ -30,6 +30,9 @@ class TestController < Egalite::Controller
   def niltest
     nil
   end
+  def ipaddr
+    req.ipaddr.to_s
+  end
 end
 class BeforefilterController < TestController
   def before_filter
@@ -83,6 +86,11 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body =~ /delegated/
     get "/beforefilter/niltest?test=notfound"
     assert last_response.not_found?
+  end
+  def test_ipaddr
+    get "/test/ipaddr"
+    assert last_response.ok?
+    assert last_response.body =~ /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/
   end
 end
 
