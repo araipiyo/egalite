@@ -39,6 +39,7 @@ class BeforefilterController < TestController
     case params[:test]
       when /notfound/: notfound
       when /delegate/: delegate(:controller => :test,:action => :test)
+      when /forbidden/: false
       else redirect(:action => :test)
     end
   end
@@ -86,6 +87,8 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body =~ /delegated/
     get "/beforefilter/niltest?test=notfound"
     assert last_response.not_found?
+    get "/beforefilter/niltest?test=forbidden"
+    assert last_response.forbidden?
   end
   def test_ipaddr
     get "/test/ipaddr"

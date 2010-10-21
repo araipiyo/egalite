@@ -307,6 +307,10 @@ class Handler
     [controller, action]
   end
   
+  def forbidden
+    [403, {'Content-Type' => 'text/plain'}, ['Forbidden']]
+  end
+  
   def display_internal_server_error(e)
     html = [
     "<html><body>",
@@ -366,6 +370,7 @@ class Handler
     before_filter_result = controller.before_filter
     if before_filter_result != true
       return before_filter_result if before_filter_result.is_a?(Array)
+      return forbidden unless before_filter_result.respond_to?(:command)
       response = case before_filter_result.command
        when :delegate
         inner_dispatch(req, before_filter_result.param)
@@ -373,6 +378,8 @@ class Handler
         redirect(before_filter_result.param)
        when :notfound
         display_notfound
+       else
+        forbidden
       end
       set_cookies_to_response(response,req)
       return response
