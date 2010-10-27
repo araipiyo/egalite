@@ -1,4 +1,6 @@
+# -*- encoding: binary -*-
 require 'tempfile'
+require 'rack/utils'
 
 module Rack
   # Class which can make any IO object rewindable, including non-rewindable ones. It does
@@ -16,27 +18,27 @@ module Rack
       @rewindable_io = nil
       @unlinked = false
     end
-    
+
     def gets
       make_rewindable unless @rewindable_io
       @rewindable_io.gets
     end
-    
+
     def read(*args)
       make_rewindable unless @rewindable_io
       @rewindable_io.read(*args)
     end
-    
+
     def each(&block)
       make_rewindable unless @rewindable_io
       @rewindable_io.each(&block)
     end
-    
+
     def rewind
       make_rewindable unless @rewindable_io
       @rewindable_io.rewind
     end
-    
+
     # Closes this RewindableInput object without closing the originally
     # wrapped IO oject. Cleans up any temporary resources that this RewindableInput
     # has created.
@@ -52,9 +54,9 @@ module Rack
         @rewindable_io = nil
       end
     end
-    
+
     private
-    
+
     # Ruby's Tempfile class has a bug. Subclass it and fix it.
     class Tempfile < ::Tempfile
       def _close
@@ -72,17 +74,20 @@ module Rack
       # access it because we have the file handle open.
       @rewindable_io = Tempfile.new('RackRewindableInput')
       @rewindable_io.chmod(0000)
+      @rewindable_io.set_encoding(Encoding::BINARY) if @rewindable_io.respond_to?(:set_encoding)
+      @rewindable_io.binmode
       if filesystem_has_posix_semantics?
         @rewindable_io.unlink
+        raise 'Unlink failed. IO closed.' if @rewindable_io.closed?
         @unlinked = true
       end
-      
+
       buffer = ""
       while @io.read(1024 * 4, buffer)
         entire_buffer_written_out = false
         while !entire_buffer_written_out
           written = @rewindable_io.write(buffer)
-          entire_buffer_written_out = written == buffer.size
+          entire_buffer_written_out = written == Rack::Utils.bytesize(buffer)
           if !entire_buffer_written_out
             buffer.slice!(0 .. written - 1)
           end
@@ -90,7 +95,7 @@ module Rack
       end
       @rewindable_io.rewind
     end
-    
+
     def filesystem_has_posix_semantics?
       RUBY_PLATFORM !~ /(mswin|mingw|cygwin|java)/
     end

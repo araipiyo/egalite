@@ -17,14 +17,6 @@ module Rack
     # The environment of the request.
     attr_reader :env
 
-    def self.new(env, *args)
-      if self == Rack::Request
-        env["rack.request"] ||= super
-      else
-        super
-      end
-    end
-
     def initialize(env)
       @env = env
     end
@@ -40,6 +32,7 @@ module Rack
     def content_type;    @env['CONTENT_TYPE']                     end
     def session;         @env['rack.session'] ||= {}              end
     def session_options; @env['rack.session.options'] ||= {}      end
+    def logger;          @env['rack.logger']                      end
 
     # The media type (type/subtype) portion of the CONTENT_TYPE header
     # without any media type parameters. e.g., when CONTENT_TYPE is
@@ -71,25 +64,34 @@ module Rack
       media_type_params['charset']
     end
 
+    def host_with_port
+      if forwarded = @env["HTTP_X_FORWARDED_HOST"]
+        forwarded.split(/,\s?/).last
+      else
+        @env['HTTP_HOST'] || "#{@env['SERVER_NAME'] || @env['SERVER_ADDR']}:#{@env['SERVER_PORT']}"
+      end
+    end
+
     def host
       # Remove port number.
-      (@env["HTTP_HOST"] || @env["SERVER_NAME"]).gsub(/:\d+\z/, '')
+      host_with_port.to_s.gsub(/:\d+\z/, '')
     end
 
     def script_name=(s); @env["SCRIPT_NAME"] = s.to_s             end
     def path_info=(s);   @env["PATH_INFO"] = s.to_s               end
 
-    def get?;            request_method == "GET"                  end
-    def post?;           request_method == "POST"                 end
-    def put?;            request_method == "PUT"                  end
-    def delete?;         request_method == "DELETE"               end
-    def head?;           request_method == "HEAD"                 end
+    def delete?;  request_method == "DELETE"  end
+    def get?;     request_method == "GET"     end
+    def head?;    request_method == "HEAD"    end
+    def options?; request_method == "OPTIONS" end
+    def post?;    request_method == "POST"    end
+    def put?;     request_method == "PUT"     end
+    def trace?;   request_method == "TRACE"   end
 
     # The set of form-data media-types. Requests that do not indicate
     # one of the media types presents in this list will not be eligible
     # for form-data / param parsing.
     FORM_DATA_MEDIA_TYPES = [
-      nil,
       'application/x-www-form-urlencoded',
       'multipart/form-data'
     ]
@@ -100,15 +102,20 @@ module Rack
     PARSEABLE_DATA_MEDIA_TYPES = [
       'multipart/related',
       'multipart/mixed'
-    ]  
+    ]
 
     # Determine whether the request body contains form-data by checking
-    # the request media_type against registered form-data media-types:
-    # "application/x-www-form-urlencoded" and "multipart/form-data". The
+    # the request Content-Type for one of the media-types:
+    # "application/x-www-form-urlencoded" or "multipart/form-data". The
     # list of form-data media types can be modified through the
     # +FORM_DATA_MEDIA_TYPES+ array.
+    #
+    # A request body is also assumed to contain form-data when no
+    # Content-Type header is provided and the request_method is POST.
     def form_data?
-      FORM_DATA_MEDIA_TYPES.include?(media_type)
+      type = media_type
+      meth = env["rack.methodoverride.original_method"] || env['REQUEST_METHOD']
+      (meth == 'POST' && type.nil?) || FORM_DATA_MEDIA_TYPES.include?(type)
     end
 
     # Determine whether the request body contains data by checking
@@ -123,8 +130,7 @@ module Rack
         @env["rack.request.query_hash"]
       else
         @env["rack.request.query_string"] = query_string
-        @env["rack.request.query_hash"]   =
-          Utils.parse_nested_query(query_string)
+        @env["rack.request.query_hash"]   = parse_query(query_string)
       end
     end
 
@@ -133,19 +139,20 @@ module Rack
     # This method support both application/x-www-form-urlencoded and
     # multipart/form-data.
     def POST
-      if @env["rack.request.form_input"].eql? @env["rack.input"]
+      if @env["rack.input"].nil?
+        raise "Missing rack.input"
+      elsif @env["rack.request.form_input"].eql? @env["rack.input"]
         @env["rack.request.form_hash"]
       elsif form_data? || parseable_data?
         @env["rack.request.form_input"] = @env["rack.input"]
-        unless @env["rack.request.form_hash"] =
-            Utils::Multipart.parse_multipart(env)
+        unless @env["rack.request.form_hash"] = parse_multipart(env)
           form_vars = @env["rack.input"].read
 
           # Fix for Safari Ajax postings that always append \0
           form_vars.sub!(/\0\z/, '')
 
           @env["rack.request.form_vars"] = form_vars
-          @env["rack.request.form_hash"] = Utils.parse_nested_query(form_vars)
+          @env["rack.request.form_hash"] = parse_query(form_vars)
 
           @env["rack.input"].rewind
         end
@@ -157,7 +164,7 @@ module Rack
 
     # The union of GET and POST data.
     def params
-      self.put? ? self.GET : self.GET.update(self.POST)
+      self.GET.update(self.POST)
     rescue EOFError => e
       self.GET
     end
@@ -183,6 +190,9 @@ module Rack
     end
     alias referrer referer
 
+    def user_agent
+      @env['HTTP_USER_AGENT']
+    end
 
     def cookies
       return {}  unless @env["HTTP_COOKIE"]
@@ -222,11 +232,11 @@ module Rack
 
       url
     end
-    
+
     def path
       script_name + path_info
     end
-    
+
     def fullpath
       query_string.empty? ? path : "#{path}?#{query_string}"
     end
@@ -245,10 +255,19 @@ module Rack
 
     def ip
       if addr = @env['HTTP_X_FORWARDED_FOR']
-        addr.split(',').last.strip
+        (addr.split(',').grep(/\d\./).first || @env['REMOTE_ADDR']).to_s.strip
       else
         @env['REMOTE_ADDR']
       end
     end
+
+    protected
+      def parse_query(qs)
+        Utils.parse_nested_query(qs)
+      end
+
+      def parse_multipart(env)
+        Utils::Multipart.parse_multipart(env)
+      end
   end
 end

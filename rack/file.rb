@@ -3,8 +3,10 @@ require 'rack/utils'
 require 'rack/mime'
 
 module Rack
-  # Rack::File serves files below the +root+ given, according to the
+  # Rack::File serves files below the +root+ directory given, according to the
   # path info of the Rack request.
+  # e.g. when Rack::File.new("/etc") is used, you can access 'passwd' file
+  # as http://localhost:9292/passwd
   #
   # Handlers can detect if bodies are a Rack::File, and use mechanisms
   # like sendfile on the +path+.
@@ -45,7 +47,8 @@ module Rack
     def forbidden
       body = "Forbidden\n"
       [403, {"Content-Type" => "text/plain",
-             "Content-Length" => body.size.to_s},
+             "Content-Length" => body.size.to_s,
+             "X-Cascade" => "pass"},
        [body]]
     end
 
@@ -73,7 +76,8 @@ module Rack
     def not_found
       body = "File not found: #{@path_info}\n"
       [404, {"Content-Type" => "text/plain",
-         "Content-Length" => body.size.to_s},
+         "Content-Length" => body.size.to_s,
+         "X-Cascade" => "pass"},
        [body]]
     end
 

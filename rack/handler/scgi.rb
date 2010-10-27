@@ -7,22 +7,19 @@ module Rack
   module Handler
     class SCGI < ::SCGI::Processor
       attr_accessor :app
-      
+
       def self.run(app, options=nil)
         new(options.merge(:app=>app,
                           :host=>options[:Host],
                           :port=>options[:Port],
                           :socket=>options[:Socket])).listen
       end
-      
+
       def initialize(settings = {})
         @app = Rack::Chunked.new(Rack::ContentLength.new(settings[:app]))
-        @log = Object.new
-        def @log.info(*args); end
-        def @log.error(*args); end
         super(settings)
       end
-        
+
       def process_request(request, input_body, socket)
         env = {}.replace(request)
         env.delete "HTTP_CONTENT_TYPE"
@@ -32,10 +29,13 @@ module Rack
         env["PATH_INFO"] = env["REQUEST_PATH"]
         env["QUERY_STRING"] ||= ""
         env["SCRIPT_NAME"] = ""
-        env.update({"rack.version" => [0,1],
-                     "rack.input" => StringIO.new(input_body),
-                     "rack.errors" => $stderr,
 
+        rack_input = StringIO.new(input_body)
+        rack_input.set_encoding(Encoding::BINARY) if rack_input.respond_to?(:set_encoding)
+
+        env.update({"rack.version" => Rack::VERSION,
+                     "rack.input" => rack_input,
+                     "rack.errors" => $stderr,
                      "rack.multithread" => true,
                      "rack.multiprocess" => true,
                      "rack.run_once" => false,

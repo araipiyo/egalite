@@ -14,7 +14,7 @@ module Rack
     #     Rack::Mime::MIME_TYPES.fetch('.foo', 'application/octet-stream')
 
     def mime_type(ext, fallback='application/octet-stream')
-      MIME_TYPES.fetch(ext, fallback)
+      MIME_TYPES.fetch(ext.to_s.downcase, fallback)
     end
     module_function :mime_type
 
@@ -87,6 +87,7 @@ module Rack
       ".gif"     => "image/gif",
       ".gz"      => "application/x-gzip",
       ".h"       => "text/x-c",
+      ".htc"     => "text/x-component",
       ".hh"      => "text/x-c",
       ".htm"     => "text/html",
       ".html"    => "text/html",
@@ -105,6 +106,7 @@ module Rack
       ".m3u"     => "audio/x-mpegurl",
       ".m4v"     => "video/mp4",
       ".man"     => "text/troff",
+      ".manifest"=> "text/cache-manifest",
       ".mathml"  => "application/mathml+xml",
       ".mbox"    => "application/mbox",
       ".mdoc"    => "text/troff",
@@ -126,6 +128,7 @@ module Rack
       ".ods"     => "application/vnd.oasis.opendocument.spreadsheet",
       ".odt"     => "application/vnd.oasis.opendocument.text",
       ".ogg"     => "application/ogg",
+      ".ogv"     => "video/ogg",
       ".p"       => "text/x-pascal",
       ".pas"     => "text/x-pascal",
       ".pbm"     => "image/x-portable-bitmap",
@@ -184,6 +187,7 @@ module Rack
       ".vrml"    => "model/vrml",
       ".war"     => "application/java-archive",
       ".wav"     => "audio/x-wav",
+      ".webm"    => "video/webm",
       ".wma"     => "audio/x-ms-wma",
       ".wmv"     => "video/x-ms-wmv",
       ".wmx"     => "video/x-ms-wmx",
