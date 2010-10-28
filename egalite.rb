@@ -262,9 +262,9 @@ class Handler
   
   def display_notfound
     if @notfound_template
-      [404, {}, [load_template(@notfound_template)]]
+      [404, {"Content-Type" => "text/html"}, [load_template(@notfound_template)]]
     else
-      [404, {}, ['404 not found']]
+      [404, {"Content-Type" => "text/plain"}, ['404 not found']]
     end
   end
   def redirect(url)
