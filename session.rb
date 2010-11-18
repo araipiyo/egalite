@@ -47,7 +47,6 @@ class SessionSequel < Session
 
   def initialize(env, cookies, opts = {}) 
     @db = env.db
-    @rand_key = opts[:rand_key] || 'egalitepiyo'
     @table = opts[:tablename] || :sessions
     
     super(env, cookies, opts)
