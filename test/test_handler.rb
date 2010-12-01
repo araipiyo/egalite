@@ -33,6 +33,10 @@ class TestController < Egalite::Controller
   def ipaddr
     req.ipaddr.to_s
   end
+  def accesslog
+    @log_values = [1,2,3]
+    "accesslog"
+  end
 end
 class BeforefilterController < TestController
   def before_filter
@@ -53,9 +57,12 @@ class T_Handler < Test::Unit::TestCase
     Egalite::Handler.new
   end
   def test_exception
+    $raise_exception = false
     get "/test/exception"
     assert last_response.server_error?
     assert last_response.body =~ /Exception/
+  ensure
+    $raise_exception = true
   end
   def test_parameters
     post("/test/parameters", {'foo' => 'bar', 'hash[a]' => '1', 'hash[b]' => '2'})
@@ -73,10 +80,13 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body =~ /delegated/
   end
   def test_nil
+    $raise_exception = false
     get "/test/niltest"
     assert last_response.server_error?
     assert last_response.body =~ /Exception/
     assert last_response.body =~ /nil/
+  ensure
+    $raise_exception = true
   end
   def test_beforefilter
     get "/beforefilter/niltest"
@@ -94,6 +104,24 @@ class T_Handler < Test::Unit::TestCase
     get "/test/ipaddr"
     assert last_response.ok?
     assert last_response.body =~ /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/
+  end
+  def test_accesslog
+    io = StringIO.new
+    Egalite::AccessLogger.io = io
+    get("http://localhost/test/accesslog",nil, {'HTTP_REFERER' => 'http://yahoo.com'})
+    assert last_response.ok?
+    
+    io.rewind
+    s = io.read
+    a = s.chomp.split(/\t/)
+    assert_match /\A[0-9-]+T[0-9:]+\+[0-9:]+\z/, a[0]
+    assert_equal "127.0.0.1", a[1]
+    assert_match /\A[0-9]+\.[0-9]+\z/, a[2]
+    assert_equal "http://localhost/test/accesslog", a[3]
+    assert_equal "http://yahoo.com", a[4]
+    assert_equal "1", a[5]
+    assert_equal "2", a[6]
+    assert_equal "3", a[7]
   end
 end
 

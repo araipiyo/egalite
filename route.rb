@@ -46,7 +46,7 @@ class Route
 
 
   def match(path)
-    path.sub!(/^\/+/,'')
+    path = path.sub(/^\/+/,'')
     pathary = path.to_s.split('/')
     controller = nil
     action = nil

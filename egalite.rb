@@ -11,6 +11,7 @@ require 'session'
 require 'helper'
 
 require 'time'
+require 'monitor'
 
 module Rack
   module Utils
@@ -23,17 +24,43 @@ end
 
 module Egalite
 
-class Logger
-  def puts(s)
-    Kernel.puts s
+module AccessLogger
+ @@io = nil
+ @@time = nil
+ @@lock = Monitor.new
+ class <<self
+  def io=(io)
+    @@io=io
   end
-  def p(s)
-    Kernel.p s
+  def _open
+    @@dir = dir
+    @@time = Time.now
+    fn = sprintf("egaliteaccess-%04d-%02d-%02d-p%d.log", @@time.year, @@time.month, @@time.mday, Process.pid)
+    @@io = open(File.join(dir,fn), "a")
   end
+  def open(dir)
+    @@dir = dir
+    yield
+  ensure
+    @@io.close if @@io
+  end
+  def write(line)
+    return nil unless @@io
+    
+    @@lock.synchronize {
+      if @@time and (@@time.mday != Time.now.mday)
+        ## log rotation
+        @@io.close
+        _open
+      end
+      @@io.puts(line)
+    }
+  end
+ end
 end
 
 class Controller
-  attr_accessor :env, :req, :params, :template_file
+  attr_accessor :env, :req, :params, :template_file, :log_values
   undef id
 
   # filters
@@ -202,14 +229,21 @@ class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path, :path_params
-  attr_reader :rack_request
+  attr_reader :rack_request, :time
 
   def initialize(values = {})
     @cookies = []
     @rack_request = values[:rack_request]
+    @time = Time.now
   end
   def ipaddr
     @rack_request.ip
+  end
+  def url
+    @rack_request.url
+  end
+  def referrer
+    @rack_request.referrer
   end
 end
 
@@ -225,8 +259,6 @@ class Handler
     @env = Environment.new(db, opts)
     opts[:static_root] ||= "static/"
 
-    @logger = Logger.new
-    
     @template_path = opts[:template_path] || 'pages/'
     @template_path << '/' if @template_path[-1..-1] != '/'
     @template_engine = HTMLTemplate
@@ -234,19 +266,9 @@ class Handler
     @notfound_template = nil
     @error_template = opts[:error_template]
     @exception_log_table = opts[:exception_log_table]
-    
-    @profile = {}
   end
 
  private
-  def profile(key)
-    st = Time.now
-    r = yield
-    fn = Time.now
-    @profile[key] = (@profile[key] || 0.0) + (fn - st)
-    r
-  end
- 
   def load_template(tmpl)
     # to expand: template caching
     if File.file?(tmpl) && File.readable?(tmpl)
@@ -390,7 +412,7 @@ class Handler
     if nargs > 0
       args.size.upto(nargs-1) { args << nil }
     end
-    values = profile(:controller) { controller.send(action,*args) }
+    values = controller.send(action,*args)
     values = controller.after_filter_return_value(values)
     
     # result handling
@@ -437,20 +459,18 @@ class Handler
     (controller_name, action_name, path_params, prmhash) = nil
     (controller, action) = nil
     
-    route = profile(:routing) { 
-     @routes.find { |route|
-      @logger.puts "Routing: matching: #{route.inspect}" if RouteDebug
+    route = @routes.find { |route|
+      puts "Routing: matching: #{route.inspect}" if RouteDebug
       route_result = route.match(path)
       (controller_name, action_name, path_params, prmhash) = route_result
       next if route_result == nil
-      @logger.puts "Routing: pre-matched: #{route_result.inspect}" if RouteDebug
+      puts "Routing: pre-matched: #{route_result.inspect}" if RouteDebug
       (controller, action) = get_controller(controller_name, action_name, method)
       true if controller
-     }
     }
     return display_notfound unless controller
 
-    @logger.puts "Routing: matched: #{controller.class} #{action}" if RouteDebug
+    puts "Routing: matched: #{controller.class} #{action}" if RouteDebug
     params.merge!(prmhash)
     
     req.route = route
@@ -466,6 +486,13 @@ class Handler
     
     if first_call
       controller.after_filter(res.to_a)
+      
+      # access log
+      t = Time.now - req.time
+      log = [req.time.iso8601, req.ipaddr, t, req.url, req.referrer]
+      log += controller.log_values.to_a
+      line = log.map {|s| s.to_s.gsub(/\t/,'')}.join("\t").gsub(/\n/,'')
+      AccessLogger.write(line)
     end
     res
   end
@@ -474,13 +501,14 @@ class Handler
     # set up logging
     
     res = nil
-    @profile = {}
-    
+
     req = Rack::Request.new(rack_env)
     
-    profile(:total) {
-     begin
-      
+    begin
+      ereq = Request.new(
+        :rack_request => req
+      )
+
       # parameter handling
       params = StringifyHash.new
       req.params.each { |k,v|
@@ -498,9 +526,6 @@ class Handler
 
       puts "before-cookie: #{req.cookies.inspect}" if @opts[:cookie_debug]
       
-      ereq = Request.new(
-        :rack_request => req
-      )
       ereq.params = params
       ereq.cookies = req.cookies
 
@@ -527,6 +552,8 @@ class Handler
       end
       
      rescue Exception => e
+      raise e if $raise_exception
+      
       begin
         # write error log
         logid = nil
@@ -554,12 +581,7 @@ class Handler
       rescue Exception => e2
         res = display_internal_server_error(e2)
       end
-     end
-    }
-    
-    # write log
-    
-    p @profile if @opts[:log_execution_time]
+    end
     
     res = res.to_a
     p res if @opts[:response_debug]
