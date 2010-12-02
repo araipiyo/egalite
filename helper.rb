@@ -26,6 +26,21 @@ module HTMLTagBuilder
   def tag_close(name, attributes)
     tag(name, :close, attributes)
   end
+  class <<self
+    include Egalite::HTMLTagBuilder
+    def a(url, s)
+      tag_open('a', :href=>url) + escape_html(s) + tag_close('a', {})
+    end
+    def li(array)
+      array.map{ |s| "<li>#{escape_html(s)}</li>" }.join("\n")
+    end
+    def ol(array)
+      "<ol>#{li(array)}</ol>"
+    end
+    def ul(array)
+      "<ul>#{li(array)}</ul>"
+    end
+  end
 end
 
 class TableHelper

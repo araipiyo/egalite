@@ -12,6 +12,7 @@ require 'helper'
 
 require 'time'
 require 'monitor'
+require 'digest/md5'
 
 module Rack
   module Utils
@@ -562,8 +563,9 @@ class Handler
           severity = 'security' if e.is_a?(SecurityError)
           
           text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
+          md5 = Digest::MD5.hexdigest(text)
           
-          logid = (@db[@exception_log_table] << {:severity => severity, :ipaddress => req.ip, :text => text})
+          logid = (@db[@exception_log_table] << {:severity => severity, :ipaddress => req.ip, :text => text, :md5 => md5, :url => req.url})
         end
         
         # show exception
@@ -593,6 +595,8 @@ end # module end
 
 class StaticController < Egalite::Controller
   def get
+    raise SecurityError unless env.opts[:static_root]
+    
     path = req.path
     path.gsub!(/[^0-9a-zA-Z\(\)\. \/_\-]/,'')
     if path.include?("..") or path =~ /^\//
