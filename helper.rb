@@ -5,7 +5,7 @@ module HTMLTagBuilder
   def escape_html(s)
     s.is_a?(NonEscapeString) ? s : NonEscapeString.new(Rack::Utils.escape_html(s))
   end
-  def tag(name , soc, attributes)
+  def _tag(name , soc, attributes)
     close = soc == :close ? '/' : ''
     solo = soc == :solo ? '/' : ''
     
@@ -18,18 +18,26 @@ module HTMLTagBuilder
     NonEscapeString.new("<#{close}#{escape_html(name)}#{atr}#{solo}>")
   end
   def tag_solo(name, attributes)
-    tag(name, :solo, attributes)
+    _tag(name, :solo, attributes)
   end
   def tag_open(name, attributes)
-    tag(name, :open, attributes)
+    _tag(name, :open, attributes)
   end
   def tag_close(name, attributes)
-    tag(name, :close, attributes)
+    _tag(name, :close, attributes)
   end
   class <<self
     include Egalite::HTMLTagBuilder
+    def tag(tag, s, attributes = {})
+      tag_open(tag, attributes) + escape_html(s) + tag_close(tag, {})
+    end
+    %w[h1 h2 h3 h4 b i p html body].each { |t|
+      define_method(t) { |s|
+        tag(t, s)
+      }
+    }
     def a(url, s)
-      tag_open('a', :href=>url) + escape_html(s) + tag_close('a', {})
+      tag('a', s, :href=>url)
     end
     def li(array)
       array.map{ |s| "<li>#{escape_html(s)}</li>" }.join("\n")

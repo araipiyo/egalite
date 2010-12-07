@@ -136,6 +136,9 @@ class Controller
   def escape_html(s)
     Rack::Utils.escape_html(s)
   end
+  def tags
+    HTMLTagBuilder
+  end
   def table_by_array(header,content,opts={})
     TableHelper.table_by_array(header,content,opts)
   end
