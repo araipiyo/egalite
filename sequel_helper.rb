@@ -6,7 +6,7 @@ class Sequel::Model
     update(data)
   end
   def update_without(hash, *selection)
-    selection.flatten.each { |k| hash.delete(k) if hash[k] }
+    selection.flatten.each { |k| hash.delete(k.to_s) if hash[k.to_s] }
     selection.flatten.each { |k| hash.delete(k.to_sym) if hash[k.to_sym] }
     update(hash)
   end

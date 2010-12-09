@@ -4,7 +4,7 @@ module Egalite
 
 class NonEscapeString < String
   def +(b)
-    b.is_a?(NonEscapeString) ? NonEscapeString.new(super(b)) : super(b)
+    NonEscapeString.new(super(HTMLTagBuilder.escape_html(b)))
   end
 end
 
