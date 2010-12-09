@@ -17,13 +17,13 @@ module HTMLTagBuilder
     end
     NonEscapeString.new("<#{close}#{escape_html(name)}#{atr}#{solo}>")
   end
-  def tag_solo(name, attributes)
+  def tag_solo(name, attributes = {})
     _tag(name, :solo, attributes)
   end
-  def tag_open(name, attributes)
+  def tag_open(name, attributes = {})
     _tag(name, :open, attributes)
   end
-  def tag_close(name, attributes)
+  def tag_close(name, attributes = {})
     _tag(name, :close, attributes)
   end
   class <<self

@@ -134,7 +134,7 @@ class Controller
     NonEscapeString.new(text)
   end
   def escape_html(s)
-    Rack::Utils.escape_html(s)
+    tags.escape_html(s)
   end
   def tags
     HTMLTagBuilder
