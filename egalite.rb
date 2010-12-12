@@ -416,6 +416,7 @@ class Handler
     if nargs > 0
       args.size.upto(nargs-1) { args << nil }
     end
+    raise SecurityError unless controller.respond_to?(action, false)
     values = controller.send(action,*args)
     values = controller.after_filter_return_value(values)
     

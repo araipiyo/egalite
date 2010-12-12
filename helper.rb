@@ -31,6 +31,9 @@ module HTMLTagBuilder
     def tag(tag, s, attributes = {})
       tag_open(tag, attributes) + escape_html(s) + tag_close(tag, {})
     end
+    %w[br hr].each { |t|
+      define_method(t) { tag_solo(t) }
+    }
     %w[h1 h2 h3 h4 b i p html body].each { |t|
       define_method(t) { |s|
         tag(t, s)
