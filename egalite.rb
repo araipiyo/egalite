@@ -25,40 +25,52 @@ end
 
 module Egalite
 
-module AccessLogger
- @@io = nil
- @@time = nil
- @@lock = Monitor.new
- class <<self
-  def io=(io)
-    @@io=io
+  module AccessLogger
+   @@io = nil
+   @@time = nil
+   @@lock = Monitor.new
+   class <<self
+    def io=(io)
+      @@io=io
+    end
+    def _open
+      @@dir = dir
+      @@time = Time.now
+      fn = sprintf("egaliteaccess-%04d-%02d-%02d-p%d.log", @@time.year, @@time.month, @@time.mday, Process.pid)
+      @@io = open(File.join(dir,fn), "a")
+    end
+    def open(dir)
+      @@dir = dir
+      yield
+    ensure
+      @@io.close if @@io
+    end
+    def write(line)
+      return nil unless @@io
+      
+      @@lock.synchronize {
+        if @@time and (@@time.mday != Time.now.mday)
+          ## log rotation
+          @@io.close
+          _open
+        end
+        @@io.puts(line)
+      }
+    end
+   end
   end
-  def _open
-    @@dir = dir
-    @@time = Time.now
-    fn = sprintf("egaliteaccess-%04d-%02d-%02d-p%d.log", @@time.year, @@time.month, @@time.mday, Process.pid)
-    @@io = open(File.join(dir,fn), "a")
+  module ErrorLogger
+   @@table = nil
+   class <<self
+    def table=(t)
+      @@table=t
+    end
+    def write(hash)
+      hash[:md5] = Digest::MD5.hexdigest(hash[:text]) unless hash[:md5]
+      @@table << hash if @@table
+    end
+   end
   end
-  def open(dir)
-    @@dir = dir
-    yield
-  ensure
-    @@io.close if @@io
-  end
-  def write(line)
-    return nil unless @@io
-    
-    @@lock.synchronize {
-      if @@time and (@@time.mday != Time.now.mday)
-        ## log rotation
-        @@io.close
-        _open
-      end
-      @@io.puts(line)
-    }
-  end
- end
-end
 
 class Controller
   attr_accessor :env, :req, :params, :template_file, :log_values
@@ -147,6 +159,10 @@ class Controller
   end
   def file_form(data={},param_name = nil, opts = {})
     FormHelper.new(data,param_name,opts.merge(:enctype => 'multipart/form-data'))
+  end
+  def errorlog(severity, text)
+    logid = Egalite::ErrorLogger.write(:severity => severity, :ipaddress => @req.ipaddr, :text => text, :md5 => md5, :url => @req.url)
+    logid
   end
 
   # From WEBrick.
@@ -270,6 +286,9 @@ class Handler
     @notfound_template = nil
     @error_template = opts[:error_template]
     @exception_log_table = opts[:exception_log_table]
+    if @exception_log_table
+      Egalite::ErrorLogger.table = db[@exception_log_table]
+    end
   end
 
  private
