@@ -114,6 +114,9 @@ class Controller
   def delegate(params)
     EgaliteResponse.new(:delegate, params)
   end
+  def include(params)
+    raw(req.handler.inner_dispatch(req, params)[2].to_s)
+  end
   def send_file(path, content_type = nil)
     ext = File.extname(path)[1..-1]
 
@@ -249,11 +252,12 @@ class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path, :path_params
-  attr_reader :rack_request, :time
+  attr_reader :rack_request, :time, :handler
 
   def initialize(values = {})
     @cookies = []
     @rack_request = values[:rack_request]
+    @handler = values[:handler]
     @time = Time.now
   end
   def ipaddr
@@ -396,6 +400,7 @@ class Handler
     response[1]['Set-Cookie'] = s
   end
   
+ public
   def inner_dispatch(req, values)
     # recursive controller call to handle include tag or delegate.
     stringified = StringifyHash.create(values)
@@ -404,8 +409,6 @@ class Handler
     newreq.params = params
     dispatch(path, params, 'GET', newreq)
   end
-
- public
   def run_controller(controller, action, req)
     # invoke controller
     controller.env = @env
@@ -530,7 +533,8 @@ class Handler
     
     begin
       ereq = Request.new(
-        :rack_request => req
+        :rack_request => req,
+        :handler => self
       )
 
       # parameter handling
