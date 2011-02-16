@@ -63,11 +63,26 @@ class HTMLTemplate
     end
     RE_ENDGROUP.match(html).post_match
   end
+  
+  def dotchain(values, name)
+    dots = name.split('.').select {|s| not s.empty? }
+    
+    value = values
+    dots.each { |key|
+      value = if value.respond_to?(key)
+        value.send(key)
+      elsif value.respond_to?(:[])
+        value[key] || value[key.to_sym]
+      end
+      break unless value
+    }
+    value
+  end
 
   def handleTemplate(html, orig_values, parent_params={})
     params = lambda { |k|
-      if k[0,1] == '.' and orig_values.respond_to?(k[1..-1])
-        orig_values.send(k[1..-1])
+      if k[0,1] == '.'
+        dotchain(orig_values, k)
       else
         orig_values[k] || orig_values[k.to_sym] || parent_params[k]
       end
