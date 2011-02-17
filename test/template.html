@@ -4,9 +4,13 @@ value:&=val;<br/>
 
 <group name='array'>
   group1-1: &=val;
-  <group name='array2'>
-    group2: &=val;
-  </group>
+  <if name='true'>
+    <unless name='false'>
+      <group name='array2'>
+         group2: &=val;
+      </group>
+    </unless>
+  </if>
   <group name='array3'>
     group3-1: &=val;
     <group name='array4'>
@@ -29,6 +33,14 @@ unlesstrue
 <unless name='false'>
 unlessfalse
 </unless>
+
+<if name='true'>
+<unless name='false'>
+<if name='true'>
+nestedif
+</if>
+</unless>
+</if>
 
 <a :controller='foo' :action='bar' :id='1' :hoge='piyo'>link</a>
 

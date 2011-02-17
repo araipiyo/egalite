@@ -9,12 +9,8 @@ class NonEscapeString < String
 end
 
 class HTMLTemplate
-  RE_GROUP = /<group\s+name=['"](.+?)['"]>/i
-  RE_ENDGROUP = /<\/group>/i
-  RE_IF = /<if\s+name=['"](.+?)['"]>/i
-  RE_ENDIF = /<\/if>/i
-  RE_UNLESS = /<unless\s+name=['"](.+?)['"]>/i
-  RE_ENDUNLESS = /<\/unless>/i
+  RE_NEST = /<(group|if|unless)\s+name=['"](.+?)['"]>/i
+  RE_ENDNEST = /<\/(group|if|unless)>/i
   RE_PLACE = /&=([.-_0-9a-zA-Z]+?);/
   RE_INPUT = /<input\s+(.+?)>/im
   RE_SELECT = /<select\s+name\s*=\s*['"](.+?)['"](.*?)>\s*<\/select>/im
@@ -70,28 +66,6 @@ class HTMLTemplate
   end
 
   def nonnestedtags(html, params)
-    # parse <if> tag (nested tag is not supported.)
-    while md1 = RE_IF.match(html)
-      pmd = params[md1[1]]
-      unless pmd.blank?
-        html.sub!(RE_IF,"")
-        html.sub!(RE_ENDIF,"")
-      else
-        md2 = RE_ENDIF.match(html)
-        html[md1.begin(0),md2.end(0) - md1.begin(0)] = ""
-      end
-    end
-    while md1 = RE_UNLESS.match(html)
-      pmd = params[md1[1]]
-      if pmd.blank?
-        html.sub!(RE_UNLESS,"")
-        html.sub!(RE_ENDUNLESS,"")
-      else
-        md2 = RE_ENDUNLESS.match(html)
-        html[md1.begin(0),md2.end(0) - md1.begin(0)] = ""
-      end
-    end
-
     # parse place holder
     html.gsub!(RE_PLACE) {
       key = $1
@@ -196,11 +170,11 @@ class HTMLTemplate
   end
 
   def string_after_outermost_closetag(html)
-    while md1 = RE_GROUP.match(html)
-      break if (RE_ENDGROUP.match(md1.pre_match))
+    while md1 = RE_NEST.match(html)
+      break if (RE_ENDNEST.match(md1.pre_match))
       html = string_after_outermost_closetag(md1.post_match)
     end
-    RE_ENDGROUP.match(html).post_match
+    RE_ENDNEST.match(html).post_match
   end
   
   public
@@ -213,26 +187,42 @@ class HTMLTemplate
     params = keyexpander(orig_values, parent_params)
     
     # parse group tag and recurse inner loop
-    while md1 = RE_GROUP.match(html) # beware: complicated....
+    while md1 = RE_NEST.match(html) # beware: complicated....
       # break if it is innermost loop.
-      break if (RE_ENDGROUP.match(md1.pre_match))
+      break if (RE_ENDNEST.match(md1.pre_match))
 
       # obtain a length of outermost group tag.
       post = string_after_outermost_closetag(md1.post_match)
-
+      
+      tag = md1[1]
+      key = md1[2]
+      
       # recursive-call for each element of array
-      groupval = params[md1[1]]
-      groupval = [] if (groupval == nil)
-      groupval = [groupval] unless (groupval.is_a?(Array))
       innertext = ""
-      groupval.each { |v| 
-        innertext << handleTemplate(md1.post_match, v, params)
-      }
+      case tag.downcase
+        when 'group'
+          groupval = params[key]
+          groupval = [] if (groupval == nil)
+          groupval = [groupval] unless (groupval.is_a?(Array))
+          groupval.each { |v| 
+            innertext << handleTemplate(md1.post_match, v, params)
+          }
+        when 'if'
+          unless params[key].blank?
+            innertext << handleTemplate(md1.post_match, orig_values, parent_params)
+          end
+        when 'unless'
+          if params[key].blank?
+            innertext << handleTemplate(md1.post_match, orig_values, parent_params)
+          end
+        else
+          raise
+      end
       # replace this group tag
       html[md1.begin(0)..-(post.size+1)] = innertext
     end
     # cutoff after end tag, in inner-most loop.
-    md1 = RE_ENDGROUP.match(html)
+    md1 = RE_ENDNEST.match(html)
     html = md1.pre_match if (md1)
 
     nonnestedtags(html, params, &block)

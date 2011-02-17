@@ -16,6 +16,7 @@ class TemplateController < Egalite::Controller
       :false => false,
       :array => [
         {:val => 1,
+         :true => true,
          :array2 => [{:val => 2}],
          :array3 => [{:val => 3, :array4 => [{:val => 41},{:val => 42}]
          }]
@@ -46,6 +47,7 @@ class T_Handler < Test::Unit::TestCase
 #    puts last_response.body
     assert last_response.ok?
     assert last_response.body =~ /value:piyo/
+    assert last_response.body =~ /nestedif/
     assert last_response.body =~ /iftrue/
     assert last_response.body !~ /iffalse/
     assert last_response.body !~ /unlesstrue/
