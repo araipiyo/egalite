@@ -115,7 +115,7 @@ class T_FormHelper < Test::Unit::TestCase
   def test_form_hello
     action = "/action"
     f = FormHelper.new({:foo => "Foo"})
-    i = X(f.form(:GET, action) + "</form>", "/form")
+    i = X(f.form(:GET, action) + f.close, "/form")
     assert_equal(i.size, 1)
     assert_equal("GET", i[0].attributes["method"])
     assert_equal(action, i[0].attributes["action"])
@@ -123,7 +123,7 @@ class T_FormHelper < Test::Unit::TestCase
 
   def test_form_should_allow_nil_action
     f = FormHelper.new({:foo => "Foo"})
-    i = X1(f.form(:GET) + "</form>", "/form")
+    i = X1(f.form(:GET) + f.close, "/form")
     assert_equal(nil, i.attributes["action"])
   end
 
