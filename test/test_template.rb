@@ -13,7 +13,15 @@ class TemplateController < Egalite::Controller
     {
       :val => 'piyo',
       :true => true,
-      :false => false
+      :false => false,
+      :array => [
+        {:val => 1,
+         :array2 => [{:val => 2}],
+         :array3 => [{:val => 3, :array4 => [{:val => 41},{:val => 42}]
+         }]
+        },
+        {:val => 12}
+      ]
     }
   end
   def inner
@@ -47,5 +55,17 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body =~ /mogura/
     assert last_response.body =~ /inner:9_hiyoko/
     assert last_response.body =~ /inner:5_kirin/
+  end
+  def test_grouptag
+    get "/template"
+    assert last_response.body =~ /group1-1: 1/
+    assert last_response.body =~ /group1-2: 1/
+    assert last_response.body =~ /group1-1: 12/
+    assert last_response.body =~ /group1-2: 12/
+    assert last_response.body =~ /group2: 2/
+    assert last_response.body =~ /group3-1: 3/
+    assert last_response.body =~ /group3-2: 3/
+    assert last_response.body =~ /group4: 41/
+    assert last_response.body =~ /group4: 42/
   end
 end

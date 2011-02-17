@@ -33,6 +33,8 @@ class HTMLTemplate
     @controller = nil
   end
   
+  private
+  
   def parse_tag_attributes(attrs)
     a = attrs.split(/(\:?\w+(!:[^=])|\:?\w+=(?:'[^']+'|"[^"]+"|\S+))\s*/)
     a = a.select { |s| s != "" }
@@ -52,18 +54,6 @@ class HTMLTemplate
     [colons, str]
   end
   
-  def escapeHTML(s)
-    s.to_s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
-  end
-  
-  def handleNestedTag(html) # cut after endgroup tag
-    while md1 = RE_GROUP.match(html)
-      break if (RE_ENDGROUP.match(md1.pre_match))
-      html = handleNestedTag(md1.post_match)
-    end
-    RE_ENDGROUP.match(html).post_match
-  end
-  
   def dotchain(values, name)
     dots = name.split('.').select {|s| not s.empty? }
     
@@ -79,33 +69,7 @@ class HTMLTemplate
     value
   end
 
-  def handleTemplate(html, orig_values, parent_params={})
-    params = lambda { |k|
-      if k[0,1] == '.'
-        dotchain(orig_values, k)
-      else
-        orig_values[k] || orig_values[k.to_sym] || parent_params[k]
-      end
-    }
-    
-    # parse group tag and recurse inner loop
-    while md1 = RE_GROUP.match(html) # beware: complicated....
-      break if (RE_ENDGROUP.match(md1.pre_match))
-      groupval = params[md1[1]]
-      groupval = [] if (groupval == nil)
-      groupval = [groupval] unless (groupval.is_a?(Array))
-      innertext = ""
-      post = handleNestedTag(md1.post_match)
-      groupval.each { |v| 
-        innertext << handleTemplate(md1.post_match, v, params )
-      }
-      # replace this group tag
-      html[md1.begin(0),html.length] = innertext + post
-    end
-    # cut after end tag
-    md1 = RE_ENDGROUP.match(html)
-    html = md1.pre_match if (md1)
-
+  def nonnestedtags(html, params)
     # parse <if> tag (nested tag is not supported.)
     while md1 = RE_IF.match(html)
       pmd = params[md1[1]]
@@ -218,8 +182,60 @@ class HTMLTemplate
         html = txt
       end
     end
-
     html
+  end
+
+  def keyexpander(params, parent_params)
+    lambda { |k|
+      if k[0,1] == '.'
+        dotchain(params, k)
+      else
+        params[k] || params[k.to_sym] || parent_params[k]
+      end
+    }
+  end
+
+  def string_after_outermost_closetag(html)
+    while md1 = RE_GROUP.match(html)
+      break if (RE_ENDGROUP.match(md1.pre_match))
+      html = string_after_outermost_closetag(md1.post_match)
+    end
+    RE_ENDGROUP.match(html).post_match
+  end
+  
+  public
+  
+  def escapeHTML(s)
+    s.to_s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+  end
+  
+  def handleTemplate(html, orig_values, parent_params={}, &block)
+    params = keyexpander(orig_values, parent_params)
+    
+    # parse group tag and recurse inner loop
+    while md1 = RE_GROUP.match(html) # beware: complicated....
+      # break if it is innermost loop.
+      break if (RE_ENDGROUP.match(md1.pre_match))
+
+      # obtain a length of outermost group tag.
+      post = string_after_outermost_closetag(md1.post_match)
+
+      # recursive-call for each element of array
+      groupval = params[md1[1]]
+      groupval = [] if (groupval == nil)
+      groupval = [groupval] unless (groupval.is_a?(Array))
+      innertext = ""
+      groupval.each { |v| 
+        innertext << handleTemplate(md1.post_match, v, params)
+      }
+      # replace this group tag
+      html[md1.begin(0)..-(post.size+1)] = innertext
+    end
+    # cutoff after end tag, in inner-most loop.
+    md1 = RE_ENDGROUP.match(html)
+    html = md1.pre_match if (md1)
+
+    nonnestedtags(html, params, &block)
   end
 end
 
