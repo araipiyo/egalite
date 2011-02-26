@@ -101,6 +101,7 @@ class SessionSequel < Session
     @mac = OpenSSL::Random.random_bytes(8).unpack('h*')[0]
     hash ||= {}
     @db[@table].filter(:id => @sid).update(hash.merge(:mac => @mac,:updated_at => Time.now))
+    @hash = @db[@table][:id => @sid]
 
     @sstr = "#@sid" + "_#@mac"
     @cookies[@cookie_name] = cookie
