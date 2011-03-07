@@ -119,15 +119,6 @@ module Sendmail
       addrspec
     end
   end
-  def send_with_template(subject, filename,to,values,from = 'support@maysee.jp')
-    File.open("mail/"+ filename ,"r") { |f|
-      text = f.read
-      tengine = Egalite::HTMLTemplate.new
-      tengine.default_escape = false
-      text = tengine.handleTemplate(text,values)
-      send(subject,text,to,from)
-    }
-  end
   def mailboxlist(value, header = 'Reply-to')
     case value
       when QualifiedMailbox: value
@@ -199,13 +190,22 @@ module Sendmail
       smtp.send_message(text, envelope_from, to)
     }
   end
-  def send(body, params, envelope_from = nil, host = 'localhost')
+  def send(body, params, host = 'localhost')
     _send(
       message(body, params),
-      envelope_from || params[:sender] || params[:from],
+      params[:envelope_from] || params[:sender] || params[:from],
       to_addresses(params),
       host
     )
+  end
+  def send_with_template(filename, params, host = 'localhost')
+    File.open("mail/"+ filename ,"r") { |f|
+      text = f.read
+      tengine = Egalite::HTMLTemplate.new
+      tengine.default_escape = false
+      text = tengine.handleTemplate(text,params)
+      send(text, params, host)
+    }
   end
  end
 end
