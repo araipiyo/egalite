@@ -143,6 +143,7 @@ class Controller
     @req.route.url_for(prms)
   end
   def link_to(title,prms)
+    return tags.a(prms,title) if prms.is_a?(String)
     raw(@req.route.link_to(title,prms))
   end
   def raw(text)
