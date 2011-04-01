@@ -188,7 +188,7 @@ class Route
             q << "#{escape(k)}[#{escape(k2)}]=#{escape(v2)}"
           }
         else
-          q << "#{escape(k)}=#{escape(v)}"
+          q << "#{escape(k)}=#{escape(v)}" if v
         end
       }
       path += "?" + q.join('&') unless q.empty?
