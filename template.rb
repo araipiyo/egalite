@@ -55,7 +55,7 @@ class HTMLTemplate
     
     value = values
     dots.each { |key|
-      value = if value.respond_to?(key)
+      value = if not value.is_a?(Hash) and value.respond_to?(key)
         value.send(key)
       elsif value.respond_to?(:[])
         value[key] || value[key.to_sym]
