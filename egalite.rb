@@ -59,6 +59,24 @@ module Egalite
     end
    end
   end
+  
+  class DebugLogger
+    def initialize(path)
+      @path = path
+    end
+    def puts(s)
+      open(@path, "a") { |f|
+        begin
+          f.flock(File::LOCK_EX)
+          f.puts s
+          f.flush
+        ensure
+          f.flock(File::LOCK_UN)
+        end
+      }
+    end
+  end
+  
   module ErrorLogger
    @@table = nil
    class <<self
@@ -288,6 +306,7 @@ class Handler
     @template_path << '/' if @template_path[-1..-1] != '/'
     @template_engine = HTMLTemplate
     
+    @profile_logger = opts[:profile_logger]
     @notfound_template = nil
     @error_template = opts[:error_template]
     @exception_log_table = opts[:exception_log_table]
@@ -440,7 +459,12 @@ class Handler
       args.size.upto(nargs-1) { args << nil }
     end
     raise SecurityError unless controller.respond_to?(action, false)
+
+    s = Time.now
     values = controller.send(action,*args)
+    t = Time.now - s
+    @profile_logger.puts "#{Time.now}: #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
+    
     values = controller.after_filter_return_value(values)
     
     # result handling
