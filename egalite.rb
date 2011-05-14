@@ -463,7 +463,7 @@ class Handler
     s = Time.now
     values = controller.send(action,*args)
     t = Time.now - s
-    @profile_logger.puts "#{Time.now}: #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
+    @profile_logger.puts "#{Time.now}: ctrl #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
     
     values = controller.after_filter_return_value(values)
     
@@ -497,9 +497,14 @@ class Handler
       # apply html template
       template = HTMLTemplate.new
       template.controller = controller
+
+      s = Time.now
       template.handleTemplate(html,values) { |values|
         inner_dispatch(req,values)[2]
       }
+      t = Time.now - s
+      @profile_logger.puts "#{Time.now}: view #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
+
       [200,{"Content-Type"=>"text/html"},[html]]
     end
     set_cookies_to_response(result,req)
