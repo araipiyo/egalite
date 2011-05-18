@@ -279,6 +279,15 @@ class Request
     @handler = values[:handler]
     @time = Time.now
   end
+  def scheme
+    @rack_request.scheme
+  end
+  def port
+    @rack_request.port
+  end
+  def host
+    @rack_request.host
+  end
   def ipaddr
     @rack_request.ip
   end
