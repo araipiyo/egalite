@@ -160,7 +160,7 @@ module Sendmail
     text = [headers.map{|k,v| "#{k}: #{v}"}.join("\n"),body].join("\n\n")
   end
   private
-  def _ta(value)
+  def _extract_addrspec(value)
     case value
       when QualifiedMailbox
         value =~ /<(#{atext_loose}+?@#{atext_loose}+?)>\Z/
@@ -181,7 +181,7 @@ module Sendmail
   public
   def to_addresses(params)
     addresses = [:to, :cc, :bcc].map { |s|
-      _ta(params[s])
+      _extract_addrspec(params[s])
     }
     addresses.flatten.compact.uniq
   end
@@ -193,7 +193,7 @@ module Sendmail
   def send(body, params, host = 'localhost')
     _send(
       message(body, params),
-      params[:envelope_from] || params[:sender] || params[:from],
+      _extract_addrspec(params[:envelope_from] || params[:sender] || params[:from]),
       to_addresses(params),
       host
     )
