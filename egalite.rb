@@ -129,6 +129,11 @@ class Controller
   end
   alias :redirect_to :redirect
   
+  def redirect_permanent(url)
+    url = url_for(url) if url.is_a?(Hash)
+    [301,{'Location' => url}, [url]]
+  end
+  
   def delegate(params)
     EgaliteResponse.new(:delegate, params)
   end
