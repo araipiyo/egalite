@@ -542,7 +542,7 @@ class Handler
     return display_notfound unless controller
 
     puts "Routing: matched: #{controller.class} #{action}" if RouteDebug
-    params.merge!(prmhash)
+    params = prmhash.merge(params)
     
     req.route = route
     req.controller = controller_name
