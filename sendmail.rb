@@ -172,7 +172,7 @@ module Sendmail
           if v.is_a?(Array)
             parse_addrspec(v[0]) ? v[0] : nil
           else
-            _ta(v)
+            _extract_addrspec(v)
           end
         }
       else nil

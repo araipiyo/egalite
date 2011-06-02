@@ -23,6 +23,9 @@ module Rack
   end
 end
 
+class CriticalError < RuntimeError
+end
+
 module Egalite
 
   module AccessLogger
@@ -79,12 +82,23 @@ module Egalite
   
   module ErrorLogger
    @@table = nil
+   @@admin_emails = nil
    class <<self
     def table=(t)
       @@table=t
     end
+    def admin_emails=(t)
+      @@admin_emails=t
+    end
     def write(hash)
       hash[:md5] = Digest::MD5.hexdigest(hash[:text]) unless hash[:md5]
+      if hash[:severity] == 'critical' and @@admin_emails
+        Sendmail.send(hash[:text],{
+          :from => 'info@xcream.net',
+          :to => @@admin_emails,
+          :subject => 'Critical error at xcream.net'
+        })
+      end
       @@table << hash if @@table
     end
    end
@@ -188,7 +202,7 @@ class Controller
     FormHelper.new(data,param_name,opts.merge(:enctype => 'multipart/form-data'))
   end
   def errorlog(severity, text)
-    logid = Egalite::ErrorLogger.write(:severity => severity, :ipaddress => @req.ipaddr, :text => text, :md5 => md5, :url => @req.url)
+    logid = Egalite::ErrorLogger.write(:severity => severity, :ipaddress => @req.ipaddr, :text => text, :url => @req.url)
     logid
   end
 
@@ -323,9 +337,11 @@ class Handler
     @profile_logger = opts[:profile_logger]
     @notfound_template = nil
     @error_template = opts[:error_template]
+    @admin_emails = opts[:admin_emails]
     @exception_log_table = opts[:exception_log_table]
     if @exception_log_table
       Egalite::ErrorLogger.table = db[@exception_log_table]
+      Egalite::ErrorLogger.admin_emails = @admin_emails
     end
   end
 
@@ -632,11 +648,11 @@ class Handler
         if @exception_log_table
           severity = 'exception'
           severity = 'security' if e.is_a?(SecurityError)
+          severity = 'critical' if e.is_a?(CriticalError)
           
           text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
-          md5 = Digest::MD5.hexdigest(text)
           
-          logid = (@db[@exception_log_table] << {:severity => severity, :ipaddress => req.ip, :text => text, :md5 => md5, :url => req.url})
+          logid = ErrorLogger.write({:severity => severity, :ipaddress => req.ip, :text => text, :url => req.url})
         end
         
         # show exception
