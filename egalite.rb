@@ -335,7 +335,7 @@ class Handler
     @template_engine = HTMLTemplate
     
     @profile_logger = opts[:profile_logger]
-    @notfound_template = nil
+    @notfound_template = opts[:notfound_template]
     @error_template = opts[:error_template]
     @admin_emails = opts[:admin_emails]
     @exception_log_table = opts[:exception_log_table]
