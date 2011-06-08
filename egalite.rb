@@ -457,7 +457,9 @@ class Handler
     (path, params) = req.route.get_path_and_params_from_params(stringified)
     newreq = req.clone
     newreq.params = params
-    dispatch(path, params, 'GET', newreq)
+    method = 'GET'
+    method = values[:http_method] if values[:http_method]
+    dispatch(path, params, method, newreq)
   end
   def run_controller(controller, action, req)
     # invoke controller
