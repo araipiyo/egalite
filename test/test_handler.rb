@@ -39,6 +39,10 @@ class TestController < Egalite::Controller
     @log_values = [1,2,3]
     "accesslog"
   end
+  private
+  def priv
+    "private!"
+  end
 end
 class BeforefilterController < TestController
   def before_filter
@@ -65,6 +69,10 @@ class T_Handler < Test::Unit::TestCase
     assert last_response.body =~ /Exception/
   ensure
     $raise_exception = true
+  end
+  def test_private
+    get "/priv"
+    assert_no_match /private!/, last_response.body
   end
   def test_parameters
     post("/test/parameters", {'foo' => 'bar', 'hash[a]' => '1', 'hash[b]' => '2'})
