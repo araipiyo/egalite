@@ -10,6 +10,8 @@ require 'test/unit'
 require 'egalite'
 require 'keitai/keitai'
 
+require 'rack'
+require 'rack/multipart'
 require 'rack/test'
 
 require 'kconv'

@@ -177,11 +177,11 @@ class Controller
   
   # helpers
   def url_for(prms)
-    @req.route.url_for(prms)
+    @req.route.url_for(prms, req.host, req.port, req.scheme)
   end
   def link_to(title,prms)
     return tags.a(prms,title) if prms.is_a?(String)
-    raw(@req.route.link_to(title,prms))
+    raw(@req.route.link_to(title,prms, req.host, req.port, req.scheme))
   end
   def raw(text)
     NonEscapeString.new(text)

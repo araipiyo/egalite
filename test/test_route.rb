@@ -33,6 +33,12 @@ class DefaultController < Egalite::Controller
   def linkto
     link_to("nya",:controller => :route, :action => :foo, :id => '1', :hoge => :piyo)
   end
+  def https
+    url_for(:action => :hoge, :scheme => :https)
+  end
+  def host
+    url_for(:action => :piyo, :host => 'hoge.example.org')
+  end
 end
 
 class RouteController < Egalite::Controller
@@ -96,6 +102,12 @@ class T_Session < Test::Unit::TestCase
     get "/stringparams"
     assert last_response.ok?
     assert last_response.body == "/stringparams/abc"
+    get "/https"
+    assert last_response.ok?
+    assert last_response.body == "https://example.org/hoge"
+    get "/host"
+    assert last_response.ok?
+    assert last_response.body == "http://hoge.example.org/piyo"
   end
   def test_path
     get "/pathtest/"

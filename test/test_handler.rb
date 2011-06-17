@@ -5,6 +5,8 @@ require 'rubygems'
 require 'test/unit'
 require 'egalite'
 
+require 'rack'
+require 'rack/multipart'
 require 'rack/test'
 
 require 'setup'

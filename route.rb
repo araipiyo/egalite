@@ -104,18 +104,46 @@ class Route
     [controller, action, path_params, params]
   end
 
-
   def escape(s)
     Rack::Utils.escape(s)
   end
 
-  def get_path_and_params_from_params(params)
+  def get_path_and_params_from_params(params, current_host = nil, current_port = nil, current_scheme = nil)
     route = @route || []
     pathary = []
     controller_exist = false
     action_exist = false
     contfrags = (@controller || "").to_s.split('/')
-    # todo: protocol and host prefix.
+    
+    scheme = nil
+    host = nil
+    port = nil
+    if params[:scheme]
+      scheme = params[:scheme].to_s
+      params.delete(:scheme)
+    end
+    if params[:host]
+      host = params[:host]
+      params.delete(:host)
+    end
+    if params[:port]
+      port = params[:port].to_i
+      params.delete(:port)
+    end
+    if (scheme or port or host)
+      raise "get_path_and_params_from_params: current_host is not supplied." unless host or current_host
+      scheme = scheme || current_scheme || 'http'
+      prefix = "#{scheme}://#{host || current_host}"
+      unless (current_scheme == 'http' and current_port == 80) or (current_scheme == 'https' and current_port == 443)
+        port ||= current_port
+      end
+      if port
+        unless (scheme == 'http' and port == 80) or (scheme == 'https' and port == 443)
+          prefix << ":#{port}"
+        end
+      end
+    end
+    
     route.each { |fragment|
       command = fragment[0]
       
@@ -174,11 +202,11 @@ class Route
     pathary = pathary.compact.map { |frag| escape(frag) }
     path = "/" + pathary.join('/').sub(/\/+$/,'').sub(/^\//,'')
     
-    [path, params, pathary]
+    [path, params, pathary, prefix]
   end
 
-  def url_for(params)
-    (path, params) = get_path_and_params_from_params(params)
+  def url_for(params, host = nil, port = nil, scheme = nil)
+    (path, params, z, prefix) = get_path_and_params_from_params(params, host, port, scheme)
     if params and params.size > 0
       q = []
       params.each { |k,v|
@@ -193,22 +221,11 @@ class Route
       }
       path += "?" + q.join('&') unless q.empty?
     end
-    path
+    "#{prefix}#{path}"
   end
 
-
-  def link_to(title, params)
-    "<a href='#{url_for(params)}'>#{title}</a>"
-  end
-  
-  # todo
-  def url_pcap(prefix, controller, action, params)
-  end
-  def url_cap(controller, action, params)
-  end
-  def url_ap(action, params)
-  end
-  def url_p(params)
+  def link_to(title, params, host = nil, port = nil, scheme = nil)
+    "<a href='#{url_for(params, host, port, scheme)}'>#{title}</a>"
   end
 end
 end
