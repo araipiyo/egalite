@@ -1,0 +1,20 @@
+{{english_name French}}
+{{native_name Francais}}
+{{aliases zh-hans,zh-cn,zh-hans-cn}}
+####
+html FrenchController#get
+
+Product Name	Nom de Produit
+Price	Prix
+####
+msg FrenchController#get
+
+Do you speak English?	Parlez vous Francais?
+####
+msg FrenchController#dlg
+
+I am an English man.	Je suis un Francais.
+####
+img FrenchController#get
+
+/hoge/itembtn1.jpg

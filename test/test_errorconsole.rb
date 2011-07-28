@@ -1,5 +1,6 @@
 
 require 'rubygems'
+require 'sequel'
 require 'test/unit'
 require 'egalite'
 require 'helper'
@@ -9,7 +10,7 @@ require 'errorconsole'
 require 'rack/test'
 require 'setup'
 
-class T_Handler < Test::Unit::TestCase
+class T_ErrorConsole < Test::Unit::TestCase
   include Rack::Test::Methods
 
   def app

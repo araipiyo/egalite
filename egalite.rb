@@ -290,13 +290,18 @@ class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path, :path_params
+  attr_accessor :controller_class, :action_method
   attr_reader :rack_request, :time, :handler
 
   def initialize(values = {})
     @cookies = []
     @rack_request = values[:rack_request]
     @handler = values[:handler]
+    @rack_env = values[:rack_env]
     @time = Time.now
+  end
+  def accept_language
+    @rack_env['HTTP_ACCEPT_LANGUAGE']
   end
   def scheme
     @rack_request.scheme
@@ -564,7 +569,9 @@ class Handler
     
     req.route = route
     req.controller = controller_name
+    req.controller_class = controller
     req.action = action_name
+    req.action_method = action
     req.path_params = path_params
     req.path = path_params.join('/')
 
@@ -596,6 +603,7 @@ class Handler
     begin
       ereq = Request.new(
         :rack_request => req,
+        :rack_env => rack_env,
         :handler => self
       )
 

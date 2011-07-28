@@ -36,7 +36,7 @@ class TemplateController < Egalite::Controller
   end
 end
 
-class T_Handler < Test::Unit::TestCase
+class T_Template < Test::Unit::TestCase
   include Rack::Test::Methods
 
   def app
