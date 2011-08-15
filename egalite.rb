@@ -339,6 +339,7 @@ class Handler
     @template_path << '/' if @template_path[-1..-1] != '/'
     @template_engine = HTMLTemplate
     
+    @filter_on_html_load = opts[:filter_on_html_load]
     @profile_logger = opts[:profile_logger]
     @notfound_template = opts[:notfound_template]
     @error_template = opts[:error_template]
@@ -531,6 +532,10 @@ class Handler
       end
       html = load_template(@template_path + htmlfile)
       return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
+      
+      # apply on_html_load filter
+      html = @filter_on_html_load.call(html) if @filter_on_html_load
+      
       # apply html template
       template = HTMLTemplate.new
       template.controller = controller

@@ -71,3 +71,30 @@ class T_Template < Test::Unit::TestCase
     assert last_response.body =~ /group4: 42/
   end
 end
+
+class T_OnHtmlLoadFilter < Test::Unit::TestCase
+  include Rack::Test::Methods
+
+  def app
+    Egalite::Handler.new(
+      :template_path => File.dirname(__FILE__),
+      :filter_on_html_load => lambda { |html| "filtered: #{html}" }
+    )
+  end
+  def test_filter_on_html_load
+    get "/template"
+    assert last_response.ok?
+    assert last_response.body =~ /\Afiltered: <html>/
+    assert last_response.body =~ /value:piyo/
+    assert last_response.body =~ /nestedif/
+    assert last_response.body =~ /iftrue/
+    assert last_response.body !~ /iffalse/
+    assert last_response.body !~ /unlesstrue/
+    assert last_response.body =~ /unlessfalse/
+    assert last_response.body =~ %r|<a\s+href='/foo/bar/1\?hoge=piyo'\s*>|
+    assert last_response.body =~ %r|<form action='/foo/bar/1\?hoge=piyo'\s+method='post'\s*>|
+    assert last_response.body =~ /mogura/
+    assert last_response.body =~ /inner:9_hiyoko/
+    assert last_response.body =~ /inner:5_kirin/
+  end
+end
