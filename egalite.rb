@@ -537,7 +537,7 @@ class Handler
       return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
       
       # apply on_html_load filter
-      html = @filter_on_html_load.call(html, req) if @filter_on_html_load
+      html = @filter_on_html_load.call(html, htmlfile) if @filter_on_html_load
       
       # apply html template
       template = HTMLTemplate.new

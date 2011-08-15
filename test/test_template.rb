@@ -78,14 +78,16 @@ class T_OnHtmlLoadFilter < Test::Unit::TestCase
   def app
     Egalite::Handler.new(
       :template_path => File.dirname(__FILE__),
-      :filter_on_html_load => lambda { |html,req| "filtered: #{html}\n path: #{req.path}" }
+      :filter_on_html_load => lambda { |html,path| 
+        "filtered: #{html}\n path: #{path}"
+      }
     )
   end
   def test_filter_on_html_load
     get "/template"
     assert last_response.ok?
     assert_match /\Afiltered: <html>/, last_response.body
-    assert_match %r|path: /template\Z|, last_response.body
+    assert_match %r|path: template\.html\Z|, last_response.body
     assert_match /value:piyo/, last_response.body
     assert_match /nestedif/, last_response.body
     assert_match /iftrue/, last_response.body
