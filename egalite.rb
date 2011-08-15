@@ -289,7 +289,7 @@ end
 class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
-  attr_accessor :route, :controller, :action, :params, :path, :path_params
+  attr_accessor :route, :controller, :action, :params, :path_info, :path_params
   attr_accessor :controller_class, :action_method
   attr_reader :rack_request, :time, :handler
 
@@ -314,6 +314,9 @@ class Request
   end
   def ipaddr
     @rack_request.ip
+  end
+  def path
+    @rack_request.path
   end
   def url
     @rack_request.url
@@ -501,7 +504,7 @@ class Handler
     s = Time.now
     values = controller.send(action,*args)
     t = Time.now - s
-    @profile_logger.puts "#{Time.now}: ctrl #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
+    @profile_logger.puts "#{Time.now}: ctrl #{t}sec #{controller.class.name}.#{action} (#{req.path_info})" if @profile_logger
     
     values = controller.after_filter_return_value(values)
     
@@ -534,7 +537,7 @@ class Handler
       return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
       
       # apply on_html_load filter
-      html = @filter_on_html_load.call(html) if @filter_on_html_load
+      html = @filter_on_html_load.call(html, req) if @filter_on_html_load
       
       # apply html template
       template = HTMLTemplate.new
@@ -545,7 +548,7 @@ class Handler
         inner_dispatch(req,values)[2]
       }
       t = Time.now - s
-      @profile_logger.puts "#{Time.now}: view #{t}sec #{controller.class.name}.#{action} (#{req.path})" if @profile_logger
+      @profile_logger.puts "#{Time.now}: view #{t}sec #{controller.class.name}.#{action} (#{req.path_info})" if @profile_logger
 
       [200,{"Content-Type"=>"text/html"},[html]]
     end
@@ -578,7 +581,7 @@ class Handler
     req.action = action_name
     req.action_method = action
     req.path_params = path_params
-    req.path = path_params.join('/')
+    req.path_info = path_params.join('/')
 
     # todo: language handling (by pathinfo?)
     # todo: session handling (by pathinfo?)
@@ -641,8 +644,6 @@ class Handler
         ereq.session.load
       end
       
-      # todo: language handling (by cookie/header)
-      
       res = dispatch(req.path_info, params, req.request_method, ereq, true)
       res = res.to_a
 
@@ -699,7 +700,7 @@ class StaticController < Egalite::Controller
   def get
     raise SecurityError unless env.opts[:static_root]
     
-    path = req.path
+    path = req.path_info
     path.gsub!(/[^0-9a-zA-Z\(\)\. \/_\-]/,'')
     if path.include?("..") or path =~ /^\//
       return [403, {"Content-Type" => "text/plain"}, ["Forbidden\n"]]

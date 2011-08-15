@@ -22,7 +22,7 @@ class DefaultController < Egalite::Controller
     url_for(:params => :abc)
   end
   def pathtest
-    req.path
+    req.path_info
   end
   def urltest
     url_for(:controller => :route, :action => :foo, :id => '1', :hoge => :piyo)
@@ -46,7 +46,7 @@ class RouteController < Egalite::Controller
     s ? s : "null"
   end
   def pathtest
-    req.path
+    req.path_info
   end
   def urltest
     url_for(:controller => '/', :action => :pathtest, :id => '1', :hoge => :piyo)
@@ -67,7 +67,7 @@ class OneSlashController < Egalite::Controller
     s ? s : "oneslash"
   end
   def pathtest
-    req.path
+    req.path_info
   end
   def urltest
     url_for(:controller => '/', :action => :pathtest, :id => '1', :hoge => :piyo)
