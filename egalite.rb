@@ -101,6 +101,15 @@ module Egalite
       end
       @@table << hash if @@table
     end
+    def write_exception(e, hash)
+      severity = 'exception'
+      severity = 'security' if e.is_a?(SecurityError)
+      severity = 'critical' if e.is_a?(CriticalError)
+      
+      text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
+      
+      ErrorLogger.write({:severity => severity, :text => text}.merge(hash))
+    end
    end
   end
 
@@ -662,13 +671,7 @@ class Handler
         # write error log
         logid = nil
         if @exception_log_table
-          severity = 'exception'
-          severity = 'security' if e.is_a?(SecurityError)
-          severity = 'critical' if e.is_a?(CriticalError)
-          
-          text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
-          
-          logid = ErrorLogger.write({:severity => severity, :ipaddress => req.ip, :text => text, :url => req.url})
+          logid = ErrorLogger.write_exception(e,{:ipaddress => req.ip, :url => req.url})
         end
         
         # show exception
