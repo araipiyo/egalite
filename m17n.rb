@@ -18,11 +18,9 @@ module Egalite
         
         super
       end
-      def after_filter(response)
-        if @lang and response[2][0] and response[2][0].is_a?(String)
-          response[2][0] = @lang.translate_html(req.controller_class, req.action_method, response[2][0])
-        end
-        super(response)
+      def filter_on_html_load(html,path)
+        html = @lang.translate_html(path, html) if @lang
+        super(html,path)
       end
       def after_filter_return_value(response)
         if @lang
@@ -91,7 +89,7 @@ module Egalite
         a ? a.last : nil
       end
       private
-      def path(c,a)
+      def method_path(c,a)
         c.class.name.to_s + '#' + a.to_s
       end
       def t_string(list, s)
@@ -129,13 +127,13 @@ module Egalite
       def partialmatch?(lang)
         fullmatch?(lang.to_s.split(/-/).first)
       end
-      def translate_html(controller, action, html)
+      def translate_html(path, html)
         return html unless @data
-        list = @data[:html][path(controller,action)]
+        list = @data[:html][path]
         return html unless list
         s = html.dup
         list.each { |k,v| s.gsub!(k, v) }
-        list_img = @data[:img][path(controller,action)]
+        list_img = @data[:img][path]
         if list_img
           list_img.each { |k,v| s.gsub!(k, v) }
         end
@@ -143,7 +141,7 @@ module Egalite
       end
       def translate_msg(controller, action, msg)
         return msg unless @data
-        list = @data[:msg][path(controller,action)]
+        list = @data[:msg][method_path(controller,action)]
         return msg unless list
         t_hash(list, msg)
       end

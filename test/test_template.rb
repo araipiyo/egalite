@@ -77,11 +77,22 @@ class T_OnHtmlLoadFilter < Test::Unit::TestCase
 
   def app
     Egalite::Handler.new(
-      :template_path => File.dirname(__FILE__),
-      :filter_on_html_load => lambda { |html,path| 
-        "filtered: #{html}\n path: #{path}"
-      }
+      :template_path => File.dirname(__FILE__)
     )
+  end
+  def setup
+    TemplateController.class_eval {
+      def filter_on_html_load(html,path)
+        "filtered: #{html}\n path: #{path}"
+      end
+    }
+  end
+  def teardown
+    TemplateController.class_eval {
+      def filter_on_html_load(html,path)
+        html
+      end
+    }
   end
   def test_filter_on_html_load
     get "/template"

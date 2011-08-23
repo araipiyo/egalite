@@ -127,6 +127,9 @@ class Controller
   def after_filter(response) # after filter for final http output
     response
   end
+  def filter_on_html_load(html, htmlfile)
+    html
+  end
   
   # accessors
   def db
@@ -351,7 +354,6 @@ class Handler
     @template_path << '/' if @template_path[-1..-1] != '/'
     @template_engine = HTMLTemplate
     
-    @filter_on_html_load = opts[:filter_on_html_load]
     @profile_logger = opts[:profile_logger]
     @notfound_template = opts[:notfound_template]
     @error_template = opts[:error_template]
@@ -546,7 +548,7 @@ class Handler
       return [404, {"Content-Type" => "text/plain"}, ["Template not found: #{htmlfile}\n"]] unless html
       
       # apply on_html_load filter
-      html = @filter_on_html_load.call(html, htmlfile) if @filter_on_html_load
+      html = controller.filter_on_html_load(html, htmlfile)
       
       # apply html template
       template = HTMLTemplate.new
