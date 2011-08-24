@@ -8,7 +8,7 @@ module Egalite
         # check hostname first to determine which language to serve.
         first = req.host.split(/\./).first
         @lang = Translation.lang(first)
-        if not @lang and req.accept_language
+        if not @lang and req.accept_language and Translation.allow_content_negotiation
           # fallback to Accept-Language HTTP header for language to serve.
           langs = req.accept_language.split(/,/)
           @lang = langs.map { |s| Translation.lang(s.split(/;/).first) }.compact.first
@@ -36,7 +36,7 @@ module Egalite
     
     class Translation
       class <<self
-        attr_accessor :langs, :user_default_lang
+        attr_accessor :langs, :user_default_lang, :allow_content_negotiation
       end
       def self.load(path)
         @@langs = {}

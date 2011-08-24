@@ -28,6 +28,7 @@ class T_Translation < Test::Unit::TestCase
 
   def setup
     Egalite::M17N::Translation.load(File.join(File.dirname(__FILE__),'m17n.txt'))
+    Egalite::M17N::Translation.allow_content_negotiation = true
   end
   def app
     Egalite::Handler.new(:template_path => File.dirname(__FILE__))
