@@ -1,6 +1,10 @@
-{{english_name French}}
-{{native_name Francais}}
-{{aliases zh-hans,zh-cn,zh-hans-cn}}
+{{languages en, fr}}
+{{system_default en}}
+{{english_name en, English}}
+{{native_name en, English}}
+{{english_name fr, French}}
+{{native_name fr, Francais}}
+{{aliases fr, zh-hans,zh-cn,zh-hans-cn}}
 ####
 html french.html
 

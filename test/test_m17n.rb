@@ -27,7 +27,7 @@ class T_Translation < Test::Unit::TestCase
   include Rack::Test::Methods
 
   def setup
-    Egalite::M17N::Translation.load(File.dirname(__FILE__))
+    Egalite::M17N::Translation.load(File.join(File.dirname(__FILE__),'m17n.txt'))
   end
   def app
     Egalite::Handler.new(:template_path => File.dirname(__FILE__))

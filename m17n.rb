@@ -38,49 +38,71 @@ module Egalite
       class <<self
         attr_accessor :langs, :user_default_lang
       end
-      def self.load(dir)
-          # translation files should be named as "en.txt", "en-us.txt"
-          
-          @@langs = {}
-          Dir.entries(dir).each { |fn|
-            next unless fn =~ /\A([a-z-]+)\.txt\Z/
-            lang = $1.downcase
-            s = open(File.join(dir,fn)) { |f| f.read }
-            
-            opts = {}
-            [:english_name, :native_name, :aliases].each { |optname|
-              s.sub!(/\{\{#{optname}\s*(.+?)\s*\}\}\s*\n+/i) {
-                opts[optname] = $1
-                ''
-              }
-            }
-            if s =~ /\{\{system_default\}\}/
-              @@langs[lang] = self.new(lang, nil, opts)
-              next
+      def self.load(path)
+        @@langs = {}
+        
+        s = open(path) { |f| f.read }
+        
+        langs = nil
+        system_default = nil
+        
+        [:languages, :system_default, :english_name, :native_name, :aliases].each { |optname|
+          s.gsub!(/\{\{#{optname}\s*(.+?)\s*\}\}\s*\n+/i) {
+            values = $1.split(/\s*,\s*/)
+            case optname
+              when :languages
+                langs = values
+                values.each { |lang|
+                  @@langs[lang] = Translation.new(lang)
+                  @@langs[lang].data = {}
+                }
+              when :system_default
+                lang = values.shift
+                @@langs[lang] = Translation.new(lang)
+                @@langs[lang].data = nil
+                system_default = lang
+              when :aliases
+                lang = values.shift
+                @@langs[lang].send("#{optname}=", values)
+              else
+                lang = values.shift
+                @@langs[lang].send("#{optname}=", values.first)
             end
-            
-            data = {}
-            s.split(/###+\s*\n+/).each { |part|
-              next if part =~ /\A\s*\Z/
-              lines = part.split(/\n+/)
-              key = lines.shift
-              (type, path) = key.split(/\s+/,2)
-              raise "Egalite::M17N::Translation.load: type should be 'html', 'msg' or 'img' but it was '#{type}'" unless %w[msg html img].include?(type)
-              hash = {}
-              lines.each { |line|
-                if type == 'img'
-                  hash[line] = line.sub(/\.(jpg|jpeg|gif|png)/i,"_#{lang}.\\1")
+            ''
+          }
+        }
+        
+        s.split(/###+\s*\n+/).each { |part|
+          next if part =~ /\A\s*\Z/
+          lines = part.split(/\n+/)
+          key = lines.shift
+          (type, path) = key.split(/\s+/,2)
+          raise "Egalite::M17N::Translation.load: type should be 'html', 'msg' or 'img' but it was '#{type}'" unless %w[msg html img].include?(type)
+          lines.each { |line|
+            if type == 'img'
+              langs.each { |lang|
+                next unless @@langs[lang].data
+                img = line.sub(/\.(jpg|jpeg|gif|png)/i,"_#{lang}.\\1")
+                @@langs[lang].data[:img] ||= {}
+                @@langs[lang].data[:img][path] ||= {}
+                @@langs[lang].data[:img][path][line] = img
+              }
+            else
+              a = line.split(/\s*\t+\s*/)
+              k = nil
+              a.each_with_index { |s,i|
+                unless @@langs[langs[i]].data
+                  k = s
                 else
-                  (k,v) = line.split(/\s*\t+\s*/,2)
-                  hash[k] = v
+                  @@langs[langs[i]].data[type.to_sym] ||= {}
+                  @@langs[langs[i]].data[type.to_sym][path] ||= {}
+                  @@langs[langs[i]].data[type.to_sym][path][k] = s
                 end
               }
-              data[type.to_sym] ||= {}
-              data[type.to_sym][path] = hash
-            }
-            @@langs[lang] = self.new(lang, data, opts)
+            end
           }
-          @@langs
+        }
+        @@langs
       end
       def self.lang(s)
         return nil unless s
@@ -112,13 +134,14 @@ module Egalite
         }
         h2
       end
-      public
-      def initialize(langcode, data, opt)
+
+    public
+
+      attr_accessor :english_name, :native_name, :aliases, :data
+      
+      def initialize(langcode)
         @langcode = langcode
-        @data = data
-        @english_name = opt[:english_name]
-        @native_name = opt[:native_name]
-        @aliases = opt[:aliases].to_s.split(/\s*,\s*/).map(&:downcase)
+        @aliases = []
       end
       def fullmatch?(lang)
         lang = lang.to_s.downcase
