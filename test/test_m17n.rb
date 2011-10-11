@@ -15,6 +15,9 @@ class FrenchController < Egalite::Controller
   def get
     {:g => [:text => 'Do you speak English?']}
   end
+  def langcode
+    @lang.langcode
+  end
   def dlg
     delegate(:action => :msg, :message => 'I am an English man.')
   end
@@ -29,6 +32,7 @@ class T_Translation < Test::Unit::TestCase
   def setup
     Egalite::M17N::Translation.load(File.join(File.dirname(__FILE__),'m17n.txt'))
     Egalite::M17N::Translation.allow_content_negotiation = true
+    Egalite::M17N::Translation.user_default_lang = 'en'
   end
   def app
     Egalite::Handler.new(:template_path => File.dirname(__FILE__))
@@ -91,6 +95,19 @@ class T_Translation < Test::Unit::TestCase
     get "/french/dlg", {}, {'HTTP_ACCEPT_LANGUAGE' => 'fr-fr'}
     assert_match  /@@@Je suis un Francais\.@@@/, last_response.body
     assert_no_match  /I am an English man\./, last_response.body
+  end
+  def test_langcode
+    get "/french/langcode"
+    assert last_response.ok?
+    assert_equal "en", last_response.body
+
+    get "/french/langcode", {}, {'HTTP_HOST' => 'fr.example.com'}
+    assert last_response.ok?
+    assert_equal "fr", last_response.body
+
+    get "/french/langcode", {}, {'HTTP_HOST' => 'zh-hans-cn.example.com'}
+    assert last_response.ok?
+    assert_equal "fr", last_response.body
   end
 end
 
