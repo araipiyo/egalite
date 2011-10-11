@@ -138,6 +138,7 @@ module Egalite
     public
 
       attr_accessor :english_name, :native_name, :aliases, :data
+      attr_reader :langcode
       
       def initialize(langcode)
         @langcode = langcode
