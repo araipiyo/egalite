@@ -156,7 +156,7 @@ module Egalite
         list = @data[:html][path]
         return html unless list
         s = html.dup
-        list.each { |k,v| s.gsub!(k, v) }
+        list.sort { |a,b| b[0].length <=> a[0].length }.each { |k,v| s.gsub!(k, v)}
         if @data[:img] and @data[:img][path]
           @data[:img][path].each { |k,v| s.gsub!(k, v) }
         end
