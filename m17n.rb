@@ -28,6 +28,15 @@ module Egalite
         end
         super(response)
       end
+      def _(str, values = [])
+        if @lang
+          str = @lang.translate_string(req.controller_class, req.action_method, str, values)
+        else
+          str = str.dup
+          values.each_with_index { |s2,i| str.gsub!(/\{#{i}\}/, s2) }
+        end
+        str
+      end
     end
     class Controller < Egalite::Controller
       include Filters
@@ -167,6 +176,17 @@ module Egalite
         list = @data[:msg][method_path(controller,action)]
         return msg unless list
         t_hash(list, msg)
+      end
+      def translate_string(controller, action, string, placeholders = [])
+        if @data
+          list = @data[:msg][method_path(controller,action)]
+          if list
+            string = t_string(list, string)
+          end
+        end
+        string = string.dup
+        placeholders.each_with_index { |s2,i| string.gsub!(/\{#{i}\}/, s2) }
+        string
       end
     end
   end

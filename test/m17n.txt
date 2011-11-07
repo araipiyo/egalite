@@ -18,6 +18,12 @@ Do you speak English?	Parlez vous Francais?
 msg FrenchController#dlg
 
 I am an English man.	Je suis un Francais.
+
+####
+msg FrenchController#placeholder
+
+Hoge {0}.	{0} Piyo.
+
 ####
 img french.html
 

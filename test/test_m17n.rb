@@ -24,6 +24,9 @@ class FrenchController < Egalite::Controller
   def msg
     {:message => params[:message]}
   end
+  def placeholder
+    _("Hoge {0}.", "foo")
+  end
 end
 
 class T_Translation < Test::Unit::TestCase
@@ -36,6 +39,19 @@ class T_Translation < Test::Unit::TestCase
   end
   def app
     Egalite::Handler.new(:template_path => File.dirname(__FILE__))
+  end
+  def test_string_translation
+    # English
+    get "/french/placeholder"
+    assert last_response.ok?
+    assert_no_match /foo Piyo./, last_response.body
+    assert_match  /Hoge foo./, last_response.body
+    
+    # French
+    get "/french/placeholder", {}, {'HTTP_ACCEPT_LANGUAGE' => 'ja,fr;q=0.8,en'}
+    assert last_response.ok?
+    assert_match /foo Piyo./, last_response.body
+    assert_no_match  /Hoge foo./, last_response.body
   end
   def test_translation
     # English
