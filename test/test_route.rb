@@ -83,7 +83,7 @@ class NoactionrouteController < Egalite::Controller
   end
 end
 
-class T_Session < Test::Unit::TestCase
+class T_Route < Test::Unit::TestCase
   include Rack::Test::Methods
   
   def app
@@ -98,7 +98,7 @@ class T_Session < Test::Unit::TestCase
     assert last_response.body == "piyo"
     get "/hashparams"
     assert last_response.ok?
-    assert last_response.body == "/hashparams?hoge[a]=1&hoge[b]=2"
+    assert_match /\/hashparams\?hoge\[[ab]\]=[12]&hoge\[[ab]\]=[12]/, last_response.body
     get "/stringparams"
     assert last_response.ok?
     assert last_response.body == "/stringparams/abc"
