@@ -21,6 +21,10 @@ module Sendmail
   class QualifiedMailbox < String
   end
  class <<self
+  @@mock = false
+  def mock=(bool)
+    @@mock=bool
+  end
   def folding(h, s) # folding white space. see RFC5322, section 2.3.3 and 3.2.2.
     len = 78 - h.size - ": ".size
     len2nd = 78 - " ".size
@@ -186,9 +190,16 @@ module Sendmail
     addresses.flatten.compact.uniq
   end
   def _send(text, envelope_from, to, host = 'localhost')
-    Net::SMTP.start(host) { |smtp|
-      smtp.send_message(text, envelope_from, to)
-    }
+    if @@mock
+      @@lastmail = [text, envelope_from, to, host]
+    else
+      Net::SMTP.start(host) { |smtp|
+        smtp.send_message(text, envelope_from, to)
+      }
+    end
+  end
+  def lastmail
+    @@lastmail if @@lastmail
   end
   def send(body, params, host = 'localhost')
     _send(
