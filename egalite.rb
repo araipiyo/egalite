@@ -277,6 +277,32 @@ class Controller
   }
 end
 
+module CSRFFilter
+  def after_filter_return_value(response) # right after controller
+    p "CSRFFilter"
+    if session and session.sstr and response.is_a?(Hash)
+      response.merge(:csrf => session.sstr)
+    elsif session and session.sstr and response.is_a?(Sequel::Model)
+      response[:csrf] = session.sstr
+      response
+    else
+      response
+    end
+  end
+end
+class CSRFController < Controller
+  def after_filter_return_value(response) # right after controller
+    if session and session.sstr and response.is_a?(Hash)
+      response.merge(:csrf => session.sstr)
+    elsif session and session.sstr and response.is_a?(Sequel::Model)
+      response[:csrf] = session.sstr
+      response
+    else
+      response
+    end
+  end
+end
+
 class EgaliteError < RuntimeError
 end
 class EgaliteResponse
@@ -352,7 +378,7 @@ class Handler
 
     @template_path = opts[:template_path] || 'pages/'
     @template_path << '/' if @template_path[-1..-1] != '/'
-    @template_engine = HTMLTemplate
+    @template_engine = opts[:template_engine] || HTMLTemplate
     
     @profile_logger = opts[:profile_logger]
     @notfound_template = opts[:notfound_template]
@@ -551,7 +577,7 @@ class Handler
       html = controller.filter_on_html_load(html, htmlfile)
       
       # apply html template
-      template = HTMLTemplate.new
+      template = @template_engine.new
       template.controller = controller
 
       s = Time.now
@@ -683,7 +709,7 @@ class Handler
           values[:logid] = logid if logid
           values[:exception] = e.to_s
           values[:backtrace] = e.backtrace
-          html = HTMLTemplate.new.handleTemplate(@error_template.dup,values)
+          html = @template_engine.new.handleTemplate(@error_template.dup,values)
           res = [500, {"Content-type"=>"text/html; charset=utf-8"}, [html]]
         else
           res = display_internal_server_error(e)

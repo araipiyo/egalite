@@ -65,8 +65,10 @@ class HTMLTemplate
     value
   end
 
-  def nonnestedtags(html, params)
-    # parse place holder
+  #
+  # tags
+  #
+  def placeholder(html, params)
     html.gsub!(RE_PLACE) {
       key = $1
       if params[key].is_a?(NonEscapeString) or not @default_escape
@@ -75,8 +77,8 @@ class HTMLTemplate
         escapeHTML(params[key])
       end
     }
-    
-    # parse input tag type=text
+  end
+  def input_tag(html, params)
     html.gsub!(RE_INPUT) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['value'] || attrs['checked'] || attrs['selected']
@@ -94,8 +96,8 @@ class HTMLTemplate
       end
       s
     }
-
-    # link tag
+  end
+  def a_tag(html, params)
     html.gsub!(RE_A) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['href']
@@ -112,6 +114,8 @@ class HTMLTemplate
       link = @controller.url_for(colons)
       "<a href='#{link}' #{noncolons}>"
     }
+  end
+  def form_tag(html,params)
     html.gsub!(RE_FORM) { |s|
       attrs = parse_tag_attributes($1)
       next s if attrs['action']
@@ -123,8 +127,8 @@ class HTMLTemplate
       link = @controller.url_for(colons)
       "<form action='#{link}' #{noncolons}>"
     }
-
-    # parse select tag
+  end
+  def select_tag(html,params)
     html.gsub!(RE_SELECT) { sel = "<select name='#$1'#$2>"
       if (params[$1] and params[$1].is_a?(Array))
         params[$1].each_index() { |key|
@@ -138,6 +142,18 @@ class HTMLTemplate
       end
       sel << "</select>"
     }
+  end
+  
+  #
+  # main routines
+  #
+  
+  def nonnestedtags(html, params)
+    placeholder(html,params)
+    input_tag(html,params)
+    a_tag(html,params)
+    form_tag(html,params)
+    select_tag(html,params)
 
     # parse include tag
     if block_given?
@@ -226,6 +242,34 @@ class HTMLTemplate
     html = md1.pre_match if (md1)
 
     nonnestedtags(html, params, &block)
+  end
+end
+
+class CSRFTemplate < HTMLTemplate
+  RE_FORM = /<form\s+([^>]+?)>(?!\s*<input type='hidden' name='csrf')/im
+
+  def form_tag(html,params)
+    html.gsub!(RE_FORM) { |s|
+      formtag = s
+      attrs = parse_tag_attributes($1)
+      csrf = nil
+      if attrs[":nocsrf"]
+        attrs.delete(":nocsrf")
+      elsif attrs["method"] =~ /\APOST\Z/i
+        csrf = params["csrf"]
+        csrf = "<input type='hidden' name='csrf' value='#{escapeHTML(csrf)}'/>"
+      end
+      
+      if (not attrs['action']) and @controller
+        (colons, noncolons) = attr_colon(attrs)
+        unless colons.empty?
+          colons = StringifyHash.create(colons)
+          link = @controller.url_for(colons)
+          formtag = "<form action='#{link}' #{noncolons}>"
+        end
+      end
+      "#{formtag}#{csrf}"
+    }
   end
 end
 
