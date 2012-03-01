@@ -119,7 +119,14 @@ class FormHelper
  public
 
   def initialize(data = {}, param_name = nil, opts = {})
-    @data = data
+    @data = lambda { |k|
+      if data.respond_to?(k)
+        data.send(k)
+      elsif data.respond_to?(:[])
+        data[k]
+      end
+    }
+
     @param_name = param_name
     @form_opts = opts
   end
