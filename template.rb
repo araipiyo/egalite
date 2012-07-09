@@ -182,7 +182,15 @@ class HTMLTemplate
       if k[0,1] == '.'
         dotchain(params, k)
       else
-        params[k] || params[k.to_sym] || parent_params[k]
+        if params[k] == nil
+          if params[k.to_sym] == nil
+            parent_params[k]
+          else
+            params[k.to_sym]
+          end
+        else
+          params[k]
+        end
       end
     }
   end
