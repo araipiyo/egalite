@@ -92,7 +92,7 @@ class HTMLTemplate
          next s if attrs['value']
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
         when 'radio'
-          s.sub!(/\/?>$/," checked/>") if (params[name] == attrs['value'])
+          s.sub!(/\/?>$/," checked/>") if (params[name].to_s == attrs['value'])
         when 'checkbox'
           s.sub!(/\/?>$/," checked/>") if params[name]
       end
