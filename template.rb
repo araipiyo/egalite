@@ -81,13 +81,15 @@ class HTMLTemplate
   def input_tag(html, params)
     html.gsub!(RE_INPUT) { |s|
       attrs = parse_tag_attributes($1)
-      next s if attrs['value'] || attrs['checked'] || attrs['selected']
+      next s if attrs['checked'] or attrs['selected']
       name = attrs['name']
       next s unless name
       case attrs['type']
         when 'text'
+         next s if attrs['value']
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
         when 'hidden'
+         next s if attrs['value']
          s.sub!(/\/?>$/," value='"+escapeHTML(params[name])+"'/>") if params[name]
         when 'radio'
           s.sub!(/\/?>$/," checked/>") if (params[name] == attrs['value'])
