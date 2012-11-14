@@ -106,6 +106,7 @@ class HTMLTemplate
       next s unless @controller
       
       (colons, noncolons) = attr_colon(attrs)
+      next s if colons.empty?
       # when :hoge=$foo, expand hash parameter ['foo']
       colons.each { |k,v|
         next if v[0,1] != '$'
