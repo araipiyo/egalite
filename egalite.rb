@@ -99,7 +99,7 @@ module Egalite
           :subject => 'Critical error at xcream.net'
         })
       end
-      @@table << hash if @@table
+      @@table.insert(hash) if @@table
     end
     def write_exception(e, hash)
       severity = 'exception'
