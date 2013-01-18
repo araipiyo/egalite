@@ -7,8 +7,8 @@ class Sequel::Model
   end
   def update_without(hash, *selection)
     hash = hash.clone
-    selection.flatten.each { |k| hash.delete(k.to_s) if hash[k.to_s] }
-    selection.flatten.each { |k| hash.delete(k.to_sym) if hash[k.to_sym] }
+    selection.flatten.each { |k| hash.delete(k.to_s) if hash.key?(k.to_s) }
+    selection.flatten.each { |k| hash.delete(k.to_sym) if hash.key?(k.to_sym) }
     update(hash)
   end
   def to_hash
