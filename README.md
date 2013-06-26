@@ -10,24 +10,20 @@ Egaliteは、Ruby用のウェブアプリケーションフレームワークで
 
 ## コントローラーの基本
 
-``
-class FooController < Egalite::Controller
-  def bar(id)
-    "#{id}ですよ"
-  end
-end
-``
+	class FooController < Egalite::Controller
+	  def bar(id)
+	    "#{id}ですよ"
+	  end
+	end
 
 このようなアクションは/foo/bar/<id>のURLで呼び出され、引数としてidが引き渡されます。出力としては文字列がそのままtext/htmlのcontent-typeで出力されます。
 
 ### デフォルトコントローラーとデフォルトアクション
 
-``
-class DefaultController < Egalite::Controller
-  def get
-  end
-end
-``
+	class DefaultController < Egalite::Controller
+	  def get
+	  end
+	end
 
 このアクションは他のコントローラーで引っかけられなかったすべてのアクセスを引き取ります。実際のURLパスはreq.pathというメソッドで取得できます。
 
@@ -45,13 +41,11 @@ Hashを返した場合は、テンプレートエンジンにHashが引き渡さ
 
 URL以外で引き渡されるパラメーター(クエリパラメータやPOSTパラメータ)はparamsというメソッド経由で参照することができます。paramsというメソッドはパラメーターの格納されたHashを返します。
 
-``
-class FooController < Egalite::Controller
-  def post(id)
-    "#{params[:hoge]}: #{id}"
-  end
-end
-``
+	class FooController < Egalite::Controller
+	  def post(id)
+	    "#{params[:hoge]}: #{id}"
+	  end
+	end
 
 このコントローラーが定義されている場合、/foo/524にhoge=piyoというパラメータでPOSTでアクセスした場合、出力として"piyo: 524"という文字列が出力されます。
 
@@ -59,42 +53,38 @@ end
 
 ### フック (filter)
 
-``
-class MainPages < Egalite::Controller
-  def before_filter
-  end
-end
-``
+	class MainPages < Egalite::Controller
+	  def before_filter
+	  end
+	end
 
 ### アクセス制御イディオム
 
 ## ビューの基本
 
-``
-<html>
-<body>
-プレースホルダ: &=placeholder;
-
-配列の展開:
-<group name='foo'>
-</group>
-
-if文:
-<if name='bar'>
-</if>
-
-unless文:
-<unless name='bar'>
-</unless>
-
-ネストしたHashもしくはメソッドへのアクセス: &=.hoge.piyo;
-
-include文:
-<include >
-
-</body>
-</html>
-``
+	<html>
+	<body>
+	プレースホルダ: &=placeholder;
+	
+	配列の展開:
+	<group name='foo'>
+	</group>
+	
+	if文:
+	<if name='bar'>
+	</if>
+	
+	unless文:
+	<unless name='bar'>
+	</unless>
+	
+	ネストしたHashもしくはメソッドへのアクセス: &=.hoge.piyo;
+	
+	include文:
+	<include >
+	
+	</body>
+	</html>
 
 ### フォームへの自動埋め込み
 
