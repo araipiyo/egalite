@@ -1,4 +1,5 @@
-require '../../egalite/egalite'
+require 'rubygems'
+require 'egalite'
 
 class DefaultController < Egalite::Controller
   def get(name = 'egalite')
@@ -30,10 +31,4 @@ class DefaultController < Egalite::Controller
     redirect_to('/')
   end
 end
-
-ShowException = true
-RouteDebug = false
-egalite = Egalite::Handler.new
-
-Rack::Handler::WEBrick.run(egalite, :Port => 4000)
 
