@@ -432,10 +432,9 @@ class Handler
       c.gsub!(/[^0-9a-z]/,'')
       c.capitalize
     }.join
-    controllername = 'Index' if controllername.blank?
+    controllername = 'Default' if controllername.blank?
     
     kontroller = Object.const_get(controllername+'Controller') rescue nil
-    kontroller ||= Object.const_get('DefaultController') rescue nil
     return nil unless kontroller
     
     controller = kontroller.new
