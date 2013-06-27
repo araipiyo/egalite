@@ -1,5 +1,3 @@
-require 'jcode'
-
 module Egalite
 
 class NonEscapeString < String

@@ -15,23 +15,23 @@ class EgaliteErrorController < Egalite::Controller
   def get
     hb = Egalite::HTMLTagBuilder
     raw("<html><body>" + 
-      hb.ol([ hb.a('latest','最新エラー一覧'),
-              hb.a('frequent','高頻度エラー一覧'),
-              hb.a('security','セキュリティエラー一覧'),
-              "<form action='detail'>エラー番号: <input type='text' name='id'><input type='submit'></form>",
+      hb.ol([ hb.a('latest','譛譁ｰ繧ｨ繝ｩ繝ｼ荳隕ｧ'),
+              hb.a('frequent','鬮倬ｻ蠎ｦ繧ｨ繝ｩ繝ｼ荳隕ｧ'),
+              hb.a('security','繧ｻ繧ｭ繝･繝ｪ繝�繧｣繧ｨ繝ｩ繝ｼ荳隕ｧ'),
+              "<form action='detail'>繧ｨ繝ｩ繝ｼ逡ｪ蜿ｷ: <input type='text' name='id'><input type='submit'></form>",
       ]) + "</body></html>")
   end
   def display(recs)
     hb = Egalite::HTMLTagBuilder
     raw("<body><html>" +
       table_by_array(
-        ['種別番号(詳細)', '発生回数', '内容', 'URL', '削除'],
+        ['遞ｮ蛻･逡ｪ蜿ｷ(隧ｳ邏ｰ)', '逋ｺ逕溷屓謨ｰ', '蜀�螳ｹ', 'URL', '蜑企勁'],
         recs.map { |rec|
           [hb.a(url_for(:action => :group, :id => rec[:md5]),rec[:md5]),
            rec[:count],
            rec[:text][0..50],
            rec[:url][0..50],
-           hb.a(url_for(:action => :delete, :id => rec[:md5]),'削除'),
+           hb.a(url_for(:action => :delete, :id => rec[:md5]),'蜑企勁'),
           ]
         }
       ) + "</body></html>")

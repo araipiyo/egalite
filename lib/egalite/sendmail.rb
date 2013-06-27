@@ -1,5 +1,4 @@
 
-require 'template'
 require 'nkf'
 require 'time'
 

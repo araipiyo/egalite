@@ -1,7 +1,5 @@
 
-$LOAD_PATH << File.join(File.dirname(__FILE__))
-
-require 'ketai'
+require 'egalite/keitai/ketai'
 require 'uri'
 require 'openssl'
 require 'base64'
