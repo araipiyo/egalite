@@ -117,7 +117,7 @@ module Egalite
 
 class Controller
   attr_accessor :env, :req, :params, :template_file, :log_values
-  undef id
+  undef id if defined? id
 
   # filters
   def before_filter
