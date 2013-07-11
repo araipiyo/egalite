@@ -1,7 +1,7 @@
 $LOAD_PATH << File.join(File.dirname(__FILE__), '..')
 
 require 'test/unit'
-require 'sendmail'
+require 'lib/egalite/sendmail'
 
 $KCODE = 'utf8'
 
@@ -97,10 +97,11 @@ class T_Sendmail < Test::Unit::TestCase
       :from => 'hoge@example.com',
       :to   => [Sendmail.address('arai@example.com','新井俊一'),
                 ['tanaka@example.com','田中太郎'],
-                {:address => 'takeda@example.com', :name => '武田一郎'},
+                ['takeda@example.com','武田一郎'],
                 'ueno@example.com'
                ],
-      :cc   => Sendmail.address('foo@example.com', 'Foo Bar'),
+      :cc   => {'Foo Bar' => 'foo@example.com',
+                'Foo Who' => 'who@example.com'},
       :bcc  => Sendmail.address('zzz@example.com', 'zzz'),
       :reply_to=> Sendmail.address('baz@example.com', 'Baz Bzz'),
       :subject => 'こんにちは',
@@ -133,12 +134,13 @@ class T_Sendmail < Test::Unit::TestCase
     assert_match '田中太郎', b
     assert_match '武田一郎', c
     assert_match '"Foo Bar" <foo@example.com>', h['Cc']
+    assert_match '"Foo Who" <who@example.com>', h['Cc']
     assert_match '"Baz Bzz" <baz@example.com>', h['Reply-To']
     assert_nil h['Bcc']
   end
   def test_to_addresses
     a = Sendmail.to_addresses(params)
-    %w[foo@example.com arai@example.com tanaka@example.com takeda@example.com ueno@example.com zzz@example.com].each { |s|
+    %w[foo@example.com who@example.com arai@example.com tanaka@example.com takeda@example.com ueno@example.com zzz@example.com].each { |s|
       assert a.include?(s)
     }
   end

@@ -5,16 +5,24 @@ require 'time'
 # mailheaders
 # {
 #   :date => Time.new,
-#   :from => 'ARAI Shunichi <arai@example.com>', # encoded by Sendmail.address
+#   :from => {'ARAI Shunichi' => 'arai@example.com'},
 #   :reply_to => ,
-#   :to => 'tanaka@example.com', # encoded by Sendmail.address
-#   :cc => '', # encoded by Sendmail.address
+#   :to => 'tanaka@example.com',
+#   :cc => '',
 #   :bcc => '',
 #   :message_id => '',
 #   :in_reply_to => '',
 #   :references => '',
 #   :subject => '',
 # }
+
+# many ways to designate mail addresses.
+# 1. array: you can put multiple addresses (string) into array.
+# 1b array of array: 
+#  [["hoge@example.com","Hoge Taro"]]
+# 2. simple string: "mailaddress@example.com" works just fine.
+# 3. encoded string: Sendmail.address("hoge@example.com", "Hoge Taro")
+# 4. hash: { "Hoge Taro" => "hoge@example.com" }
 
 module Sendmail
   class QualifiedMailbox < String
@@ -124,9 +132,14 @@ module Sendmail
   end
   def mailboxlist(value, header = 'Reply-to')
     case value
-      when QualifiedMailbox: value
-      when String: parse_addrspec(value) ? value : nil
-      when Hash: address(value[:address],value[:name],header)
+      when QualifiedMailbox
+        value
+      when String
+        parse_addrspec(value) ? value : nil
+      when Hash
+        folding(header, value.map { |name, address|
+          address(address,name)
+        }.join(', '))
       when Array
         folding(header, value.map { |v|
           v.is_a?(Array) ? address(v[0],v[1]) : mailboxlist(v,header)
@@ -168,8 +181,12 @@ module Sendmail
       when QualifiedMailbox
         value =~ /<(#{atext_loose}+?@#{atext_loose}+?)>\Z/
         $1
-      when String: parse_addrspec(value) ? value : nil
-      when Hash: parse_addrspec(value[:address]) ? value[:address] : nil
+      when String
+        parse_addrspec(value) ? value : nil
+      when Hash
+        value.values.map { |s|
+          parse_addrspec(s) ? s : nil
+        }
       when Array
         value.map { |v|
           if v.is_a?(Array)
@@ -197,7 +214,7 @@ module Sendmail
       }
     end
   end
-  def lastmail
+  def lastmail # for unit testing purpose
     @@lastmail if @@lastmail
   end
   def send(body, params, host = 'localhost')
