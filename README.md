@@ -89,3 +89,22 @@ URL以外で引き渡されるパラメーター(クエリパラメータやPOST
 ### フォームへの自動埋め込み
 
 
+## セキュリティ対応
+
+### 自動CSRF対策機能
+
+egaliteには自動でCSRF対策のチェック値を埋め込む機能が付いています。この機能を有効にすると自動でCSRF対策を行うことができます。
+
+【注意】外部のサイトにフォームを送信するときにセッション情報が送られてしまいますので、外部のサイトにフォームを送る必要があるシステムでは絶対に使わないでください。(そのうち改善します)
+
+有効にする方法は以下の通りです。
+
+  egalite = Egalite::Handler.new(
+    :db => db,
+    :template_engine => Egalite::CSRFTemplate
+  )
+
+  class Pages < Egalite::CSRFController
+  end
+
+
