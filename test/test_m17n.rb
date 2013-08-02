@@ -1,9 +1,7 @@
-$LOAD_PATH << File.join(File.dirname(__FILE__), '..')
-
 require 'rubygems'
 require 'test/unit'
 require 'egalite'
-require 'm17n'
+require 'egalite/m17n'
 
 require 'rack/test'
 

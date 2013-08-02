@@ -3,9 +3,9 @@ require 'rubygems'
 require 'sequel'
 require 'test/unit'
 require 'egalite'
-require 'helper'
-require 'auth/basic'
-require 'errorconsole'
+require 'egalite/helper'
+require 'egalite/auth/basic'
+require 'egalite/errorconsole'
 
 require 'rack/test'
 require 'setup'
@@ -63,13 +63,13 @@ CREATE TABLE logs (
   def test_group
     basic_authorize('admin','9999')
     get "/egalite/error/group/1234"
-    assert_match %r|<li>/hoge</li>\n*<li>hogehoge</li>|, last_response.body
+    assert_match %r|<li>&#x2F;hoge</li>\n*<li>hogehoge</li>|, last_response.body
   end
   def test_detail
     basic_authorize('admin','9999')
     get "/egalite/error/detail/1"
     assert_not_equal "no record found.", last_response.body
-    assert_match %r|<li>127.0.0.1</li>\n*<li>/hoge</li>\n*<li>hogehoge</li>|, last_response.body
+    assert_match %r|<li>127.0.0.1</li>\n*<li>&#x2F;hoge</li>\n*<li>hogehoge</li>|, last_response.body
     
     get "/egalite/error/detail/100"
     assert_equal "no record found.", last_response.body

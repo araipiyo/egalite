@@ -1,7 +1,6 @@
-$LOAD_PATH << File.join(File.dirname(__FILE__), '..')
-
+require 'rubygems'
 require 'test/unit'
-require 'blank'
+require 'egalite/blank'
 
 class Empty
   def empty?

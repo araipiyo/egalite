@@ -9,6 +9,10 @@ require 'rack/test'
 require 'setup'
 
 class TemplateController < Egalite::Controller
+  def after_filter_html(html)
+    p req.path
+    html
+  end
   def get
     {
       :val => 'piyo',
@@ -69,6 +73,10 @@ class T_Template < Test::Unit::TestCase
     assert last_response.body =~ /group3-2: 3/
     assert last_response.body =~ /group4: 41/
     assert last_response.body =~ /group4: 42/
+  end
+  def test_filter
+    $filter = []
+    get "/template"
   end
 end
 

@@ -101,7 +101,9 @@ module Egalite
           :subject => 'Critical error at xcream.net'
         })
       end
-      @@table.insert(hash) if @@table
+      if @@table
+        @@table.insert(hash) rescue nil
+      end
     end
     def write_exception(e, hash)
       severity = 'exception'
@@ -124,6 +126,9 @@ class Controller
     true
   end
   def after_filter_return_value(response) # right after controller
+    response
+  end
+  def after_filter_html(response) # html after template filter
     response
   end
   def after_filter(response) # after filter for final http output
@@ -583,6 +588,9 @@ class Handler
         inner_dispatch(req,values)[2]
       }
       t = Time.now - s
+      
+      html = controller.after_filter_html(html)
+      
       @profile_logger.puts "#{Time.now}: view #{t}sec #{controller.class.name}.#{action} (#{req.path_info})" if @profile_logger
 
       [200,{"Content-Type"=>"text/html"},[html]]

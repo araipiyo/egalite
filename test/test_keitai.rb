@@ -2,17 +2,17 @@
 
 $KCODE = 'UTF8'
 
-$LOAD_PATH << File.join(File.dirname(__FILE__), '..')
 $LOAD_PATH << File.join(File.dirname(__FILE__))
 
 require 'rubygems'
 require 'test/unit'
 require 'egalite'
-require 'keitai/keitai'
+require 'egalite/keitai/keitai'
 
 require 'rack'
 require 'rack/multipart'
 require 'rack/test'
+require 'rack/ketai'
 
 require 'kconv'
 
