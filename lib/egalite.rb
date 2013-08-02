@@ -335,7 +335,7 @@ class Request
   attr_accessor :session, :cookies, :authorization
   attr_accessor :language, :method
   attr_accessor :route, :controller, :action, :params, :path_info, :path_params
-  attr_accessor :controller_class, :action_method
+  attr_accessor :controller_class, :action_method, :inner_path
   attr_reader :rack_request, :time, :handler
 
   def initialize(values = {})
@@ -623,6 +623,7 @@ class Handler
     req.controller_class = controller
     req.action = action_name
     req.action_method = action
+    req.inner_path = path
     req.path_params = path_params
     req.path_info = path_params.join('/')
 

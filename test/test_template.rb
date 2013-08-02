@@ -8,9 +8,11 @@ require 'rack/test'
 
 require 'setup'
 
+$filter = []
+
 class TemplateController < Egalite::Controller
   def after_filter_html(html)
-    p req.path
+    $filter << req.inner_path
     html
   end
   def get
@@ -77,6 +79,7 @@ class T_Template < Test::Unit::TestCase
   def test_filter
     $filter = []
     get "/template"
+    assert_equal ["/template/inner", "/template/innerparam/9", "/template/innerparam/5", "/template"], $filter
   end
 end
 
