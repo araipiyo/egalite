@@ -264,7 +264,7 @@ class CSRFTemplate < HTMLTemplate
       csrf = nil
       if attrs[":nocsrf"]
         attrs.delete(":nocsrf")
-      elsif attrs["method"] =~ /\APOST\Z/i
+      elsif attrs["method"].upcase == "POST"
         csrf = params["csrf"]
         csrf = "<input type='hidden' name='csrf' value='#{escapeHTML(csrf)}'/>"
       end

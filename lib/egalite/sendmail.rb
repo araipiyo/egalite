@@ -1,6 +1,7 @@
 
 require 'nkf'
 require 'time'
+require 'net/smtp'
 
 # mailheaders
 # {
