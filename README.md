@@ -4,6 +4,7 @@ Egaliteは、Ruby用のウェブアプリケーションフレームワークで
 
 添付ライブラリ等の説明:
 [メール送信ライブラリ](sendmail.md)
+[管理画面作成ツール](htmlbuilder.md)
 
 ## 概要
 
@@ -114,12 +115,12 @@ egaliteには自動でCSRF対策のチェック値を埋め込む機能が付い
 
 有効にする方法は以下の通りです。
 
-  egalite = Egalite::Handler.new(
-    :db => db,
-    :template_engine => Egalite::CSRFTemplate
-  )
-
-  class Pages < Egalite::CSRFController
-  end
+	egalite = Egalite::Handler.new(
+	  :db => db,
+	  :template_engine => Egalite::CSRFTemplate
+	)
+	
+	class Pages < Egalite::CSRFController
+	end
 
 
