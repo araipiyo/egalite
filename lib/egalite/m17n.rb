@@ -15,6 +15,7 @@ module Egalite
         end
         @lang ||= Translation.lang(Translation.user_default_lang)
         @lang ||= Translation.lang('ja')
+        req.language = @lang
         
         super
       end

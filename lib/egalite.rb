@@ -519,6 +519,7 @@ class Handler
     before_filter_result = controller.before_filter
     if before_filter_result != true
       return before_filter_result if before_filter_result.is_a?(Array)
+      return [200,{'Content-Type' => "text/html"},[before_filter_result]] if before_filter_result.is_a?(String)
       return forbidden unless before_filter_result.respond_to?(:command)
       response = case before_filter_result.command
        when :delegate
@@ -561,7 +562,8 @@ class Handler
     elsif values.is_a?(Array)
       values
     elsif values.is_a?(String)
-      [200,{'Content-Type' => "text/html"},[values]]
+      html = controller.after_filter_html(values)
+      [200,{'Content-Type' => "text/html"},[html]]
     elsif values.is_a?(Rack::Response)
       values.to_a
     elsif values == nil
@@ -627,9 +629,6 @@ class Handler
     req.path_params = path_params
     req.path_info = path_params.join('/')
 
-    # todo: language handling (by pathinfo?)
-    # todo: session handling (by pathinfo?)
-    
     res = run_controller(controller, action, req)
     
     if first_call
