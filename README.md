@@ -123,4 +123,37 @@ egaliteには自動でCSRF対策のチェック値を埋め込む機能が付い
 	class Pages < Egalite::CSRFController
 	end
 
+## モジュール
+
+### キャッシュモジュール
+
+バージョン1.1.0よりキャッシュモジュールが追加されました。以下のようにして、コントローラーの出力結果をキャッシュすることができます。
+
+	class HogeController < Egalite::Controller
+	  include Egalite::ControllerCache
+	  
+	  # キャッシュするアクションを指定
+	  #   expireは秒単位
+	  cache_action :cache, :expire => 1 
+	end
+
+現時点ではキャッシュデータの格納先はRDBMSに限られます。将来的にはmemcachedなどにも対応する予定です。
+
+### 多言語化モジュール
+
+多言語化モジュールを利用することにより、ウェブサイトを多言語化することができます。
+
+多言語化を利用するさいは、アプリケーションの起動時に以下のようにして多言語化の設定を行います。
+
+	Egalite::M17N::Translation.load(File.join(File.dirname(__FILE__),'m17n.txt'))
+	Egalite::M17N::Translation.allow_content_negotiation = true
+	Egalite::M17N::Translation.user_default_lang = 'en'
+
+コントローラーでは、以下のようにして多言語化フィルタを導入します。フィルタのチェーンを保つために継承して使用すると良いでしょう。
+
+	include Egalite::M17N::Filters
+
+翻訳文章はm17n.txtに記載します。
+
+HTMLテンプレートに記載された文章や画像はm17n.txtに記述するだけで、コントローラーには一切手を加えることなく多言語化が可能です。
 
