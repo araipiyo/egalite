@@ -139,6 +139,16 @@ egaliteには自動でCSRF対策のチェック値を埋め込む機能が付い
 
 現時点ではキャッシュデータの格納先はRDBMSに限られます。将来的にはmemcachedなどにも対応する予定です。
 
+RDBMSでのテーブル定義は以下の通り。
+
+	CREATE TABLE controller_cache (
+	  id SERIAL PRIMARY KEY,
+	  inner_path TEXT UNIQUE NOT NULL,
+	  language TEXT,
+	  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	  content TEXT NOT NULL
+	);
+
 ### 多言語化モジュール
 
 多言語化モジュールを利用することにより、ウェブサイトを多言語化することができます。
