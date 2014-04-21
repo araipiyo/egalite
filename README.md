@@ -143,7 +143,7 @@ RDBMSでのテーブル定義は以下の通り。
 
 	CREATE TABLE controller_cache (
 	  id SERIAL PRIMARY KEY,
-	  inner_path TEXT UNIQUE NOT NULL,
+	  inner_path TEXT NOT NULL,
 	  language TEXT,
 	  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	  content TEXT NOT NULL
