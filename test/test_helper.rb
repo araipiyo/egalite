@@ -237,6 +237,34 @@ class T_FormHelper < Test::Unit::TestCase
     assert_equal("fooname", i.attributes["name"])
   end
 
+  def test_select_by_array_array
+    f = FormHelper.new()
+    array = [[1,:foo],[2,:bar]]
+    d = to_doc(f.select_by_array("test", array))
+    assert_equal(1, X(d, "/select").size)
+    assert_equal(2, X(d, "/select/option").size)
+    o0 = X(d, "/select/option")[0]
+    assert_equal("foo", o0.text)
+    assert_equal("1", o0.attributes["value"])
+    o1 = X(d, "/select/option")[1]
+    assert_equal("bar", o1.text)
+    assert_equal("2", o1.attributes["value"])
+  end
+
+  def test_select_by_array_string
+    f = FormHelper.new()
+    array = [:foo,:bar]
+    d = to_doc(f.select_by_array("test", array))
+    assert_equal(1, X(d, "/select").size)
+    assert_equal(2, X(d, "/select/option").size)
+    o0 = X(d, "/select/option")[0]
+    assert_equal("foo", o0.text)
+    assert_equal("foo", o0.attributes["value"])
+    o1 = X(d, "/select/option")[1]
+    assert_equal("bar", o1.text)
+    assert_equal("bar", o1.attributes["value"])
+  end
+  
   def make_select_options
     [{:optname => "optvalue0", :id=> "id0"},
      {:optname => "optvalue1", :id=> "id1"}]

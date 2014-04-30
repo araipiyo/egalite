@@ -222,10 +222,15 @@ class FormHelper
   end
   def select_by_array(name, options, opts = {})
     optionstr = options.map {|o|
-      flag = o[0] == @data[name]
-      a = {:value => o[0]}
+      (value,name) = if o.is_a?(Array)
+        o
+      else
+        [o,o]
+      end
+      flag = value == @data[name]
+      a = {:value => value}
       a[:selected] = 'selected' if flag
-      "#{tag_open(:option, a)}#{escape_html(o[1])}</option>"
+      "#{tag_open(:option, a)}#{escape_html(name)}</option>"
     }.join('')
     
     raw "<select name='#{expand_name(name)}'#{opt(opts)}>#{optionstr}</select>"
