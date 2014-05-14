@@ -144,5 +144,12 @@ class T_Sendmail < Test::Unit::TestCase
       assert a.include?(s)
     }
   end
+  def test_mock
+    Sendmail.mock = true
+    Sendmail.send("Hello",:from => "arai@example.com", :to => "to@example.com")
+    assert_match "To: to@example.com\n", Sendmail.lastmail[0]
+    assert_match "From: arai@example.com\n", Sendmail.lastmail[0]
+    assert_match "\n\nHello", Sendmail.lastmail[0]
+  end
 end
 

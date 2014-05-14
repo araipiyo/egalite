@@ -26,13 +26,12 @@ require 'net/smtp'
 # 4. hash: { "Hoge Taro" => "hoge@example.com" }
 
 module Sendmail
-  class QualifiedMailbox < String
-  end
+ class QualifiedMailbox < String
+ end
+ @mock = false
  class <<self
-  @@mock = false
-  def mock=(bool)
-    @@mock=bool
-  end
+  attr_accessor :mock
+  attr_reader :lastmail
   def folding(h, s) # folding white space. see RFC5322, section 2.3.3 and 3.2.2.
     len = 78 - h.size - ": ".size
     len2nd = 78 - " ".size
@@ -207,16 +206,13 @@ module Sendmail
     addresses.flatten.compact.uniq
   end
   def _send(text, envelope_from, to, host = 'localhost')
-    if @@mock
-      @@lastmail = [text, envelope_from, to, host]
+    if @mock
+      @lastmail = [text, envelope_from, to, host]
     else
       Net::SMTP.start(host) { |smtp|
         smtp.send_message(text, envelope_from, to)
       }
     end
-  end
-  def lastmail # for unit testing purpose
-    @@lastmail if @@lastmail
   end
   def send(body, params, host = 'localhost')
     _send(
