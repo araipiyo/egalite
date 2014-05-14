@@ -2,6 +2,7 @@ $LOAD_PATH << File.join(File.dirname(__FILE__), '..')
 
 require 'test/unit'
 require 'lib/egalite/sendmail'
+require 'dkim'
 
 $KCODE = 'utf8'
 
@@ -146,10 +147,36 @@ class T_Sendmail < Test::Unit::TestCase
   end
   def test_mock
     Sendmail.mock = true
+    Sendmail.force_dkim = false
     Sendmail.send("Hello",:from => "arai@example.com", :to => "to@example.com")
     assert_match "To: to@example.com\n", Sendmail.lastmail[0]
     assert_match "From: arai@example.com\n", Sendmail.lastmail[0]
     assert_match "\n\nHello", Sendmail.lastmail[0]
+  end
+  def test_dkim
+    Sendmail.mock = true
+    Sendmail.force_dkim = true
+    Dkim::domain = "example.com"
+    Dkim::selector = "test"
+    Dkim::private_key = <<EOS
+-----BEGIN RSA PRIVATE KEY-----
+MIICXgIBAAKBgQCkCI0PP7LbLEHyicGUrxGdA3ByTvdluRTEumu+AMNYIZaHL1oA
+9ShXrhRxX14f80jXSbOhzjbauuMwv0ypwuPbuxn2rDcg7qaHUu/9lzi9SJ/h5d8/
+pYyuxXcg5WRfpv1YXV7zpRzlqg4WZzMMfsxekN/Td+tw/R+SdANp0gsYFwIDAQAB
+AoGAHTgQuHimSXhWvvde7jdJMejc7N+4HfycAHccnhnQsjA5ehcrNyR0bTnrFk7g
+m1xgy0iroNT03H2R3qsU4uB+aeqVyy2v/RgsKGQla3xMcxj78aQYYlGYwIQ6GAeX
+mEgWo+9NA5A7ecYx2Kp5FzP6r2Ha9hu59ziJmMfADOt6DiECQQDV2Iadq6+HQ4c5
+hhec5fYd7ozZ87sulSFQU2ykdGmMPDq9aOu5hO7KRky7ixu0rHpKoFEnDBO8nvIh
+7JDdoIyZAkEAxF5NM3KaJQB7jaRTUoYEfiz/nCs797YGqPdm2dXH4o1GXs+Xnbj9
+SN9zyg4X4zbBe6jmpfSoltdZSOeY+eCILwJBAMWl/D3sui6eBnTvcBGvJjxiCMNF
+l8MlSQYyJR8XDZr07CG2wPDWYdKJCVDp8PCb3eftpzQc4H0ct5UNTpPZWTkCQQCu
+nkT8aP6VxNYZ4HSPv8kjApTSpMeQwXcurcHyF97FoWdgTC3A/Y2OTdZDaUDotfpc
+IpfoH6YDbMBiykAIhBfVAkEAnvNjsnUsNrH3I31/0/+00EtjVxOUM+p1zaUaxtEt
+nl+7ExHmNd0+V7EZzAePUjHWUIAOrj0p+AQQfglpCVXcvw==
+-----END RSA PRIVATE KEY-----
+EOS
+    Sendmail.send("Hello",:from => "arai@example.com", :to => "to@example.com")
+    assert_match "DKIM-Signature:", Sendmail.lastmail[0]
   end
 end
 

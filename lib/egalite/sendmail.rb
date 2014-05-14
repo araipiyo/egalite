@@ -28,9 +28,10 @@ require 'net/smtp'
 module Sendmail
  class QualifiedMailbox < String
  end
+ @force_dkim = false
  @mock = false
  class <<self
-  attr_accessor :mock
+  attr_accessor :mock, :force_dkim
   attr_reader :lastmail
   def folding(h, s) # folding white space. see RFC5322, section 2.3.3 and 3.2.2.
     len = 78 - h.size - ": ".size
@@ -214,13 +215,26 @@ module Sendmail
       }
     end
   end
-  def send(body, params, host = 'localhost')
+  def read_private_key(pem_filename)
+    OpenSSL::PKey::RSA.new(open(pem_filename).read)
+  end
+  def send_inner_2(body, params, host, dkim, dkim_params)
+    text = message(body, params)
+    if dkim
+      text = Dkim.sign(text,dkim_params)
+    end
     _send(
-      message(body, params),
+      text,
       _extract_addrspec(params[:envelope_from] || params[:sender] || params[:from]),
       to_addresses(params),
       host
     )
+  end
+  def send(body, params, host = 'localhost')
+    send_inner_2(body, params, host, @force_dkim, {})
+  end
+  def send_with_dkim(body, params, host = 'localhost', dkim_params = {})
+    send_inner_2(body, params, host, true, dkim_params)
   end
   def send_with_template(filename, params, host = 'localhost')
     File.open("mail/"+ filename ,"r") { |f|
