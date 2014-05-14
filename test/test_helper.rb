@@ -239,16 +239,20 @@ class T_FormHelper < Test::Unit::TestCase
 
   def test_select_by_array_array
     f = FormHelper.new()
-    array = [[1,:foo],[2,:bar]]
+    array = [[nil,nil],[1,:foo],[2,:bar]]
     d = to_doc(f.select_by_array("test", array))
     assert_equal(1, X(d, "/select").size)
-    assert_equal(2, X(d, "/select/option").size)
+    assert_equal("test", X(d, "/select")[0].attributes["name"])
+    assert_equal(3, X(d, "/select/option").size)
     o0 = X(d, "/select/option")[0]
-    assert_equal("foo", o0.text)
-    assert_equal("1", o0.attributes["value"])
+    assert_equal(nil, o0.text)
+    assert_equal("", o0.attributes["value"])
     o1 = X(d, "/select/option")[1]
-    assert_equal("bar", o1.text)
-    assert_equal("2", o1.attributes["value"])
+    assert_equal("foo", o1.text)
+    assert_equal("1", o1.attributes["value"])
+    o2 = X(d, "/select/option")[2]
+    assert_equal("bar", o2.text)
+    assert_equal("2", o2.attributes["value"])
   end
 
   def test_select_by_array_string
@@ -256,6 +260,7 @@ class T_FormHelper < Test::Unit::TestCase
     array = [:foo,:bar]
     d = to_doc(f.select_by_array("test", array))
     assert_equal(1, X(d, "/select").size)
+    assert_equal("test", X(d, "/select")[0].attributes["name"])
     assert_equal(2, X(d, "/select/option").size)
     o0 = X(d, "/select/option")[0]
     assert_equal("foo", o0.text)
@@ -319,6 +324,3 @@ class T_FormHelper < Test::Unit::TestCase
   end
 
 end
-
-# XXX: test form
-# XXX: test expand_name
