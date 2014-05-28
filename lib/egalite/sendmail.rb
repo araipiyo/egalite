@@ -2,6 +2,7 @@
 require 'nkf'
 require 'time'
 require 'net/smtp'
+require 'resolv'
 
 # mailheaders
 # {
@@ -244,6 +245,17 @@ module Sendmail
       text = tengine.handleTemplate(text,params)
       send(text, params, host)
     }
+  end
+  
+  #
+  # check validity of email address with DNS lookup.
+  #
+  def verify_address(email)
+    (local,domain) = parse_addrspec(email)
+    return false unless domain
+    mx = Resolv::DNS.new.getresource(domain, Resolv::DNS::Resource::IN::MX) rescue nil
+    return false unless mx
+    true
   end
  end
 end

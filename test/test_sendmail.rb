@@ -178,5 +178,9 @@ EOS
     Sendmail.send("Hello",:from => "arai@example.com", :to => "to@example.com")
     assert_match "DKIM-Signature:", Sendmail.lastmail[0]
   end
+  def test_verify_address
+    assert Sendmail.verify_address("test@gmail.com")
+    assert_equal false, Sendmail.verify_address("test@example.com")
+  end
 end
 
