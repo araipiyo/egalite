@@ -254,8 +254,12 @@ module Sendmail
     (local,domain) = parse_addrspec(email)
     return false unless domain
     mx = Resolv::DNS.new.getresource(domain, Resolv::DNS::Resource::IN::MX) rescue nil
-    return false unless mx
-    true
+    return true if mx
+    a = Resolv::DNS.new.getresource(domain, Resolv::DNS::Resource::IN::A) rescue nil
+    return true if a
+    aaaa = Resolv::DNS.new.getresource(domain, Resolv::DNS::Resource::IN::AAAA) rescue nil
+    return true if aaaa
+    false
   end
  end
 end

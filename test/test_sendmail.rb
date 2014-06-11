@@ -180,7 +180,8 @@ EOS
   end
   def test_verify_address
     assert Sendmail.verify_address("test@gmail.com")
-    assert_equal false, Sendmail.verify_address("test@example.com")
+    assert_equal false, Sendmail.verify_address("test@example.jp")
+    assert_equal true, Sendmail.verify_address("test@example.com")
   end
 end
 
