@@ -68,7 +68,7 @@ class TableHelper
       head = header.map {|s| "<th>#{escape_html(s)}</th>" }.join
       head = "  <tr>#{head}</tr>\n"
     end
-    body = content.map { |line| "  <tr>#{yield(line)}</tr>\n" }
+    body = content.map { |line| "  <tr>#{yield(line)}</tr>\n" }.join
     NonEscapeString.new("<table#{opt(table_opts)}>\n#{head}#{body}</table>")
   end
  public
