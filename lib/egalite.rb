@@ -587,7 +587,7 @@ class Handler
 
       s = Time.now
       template.handleTemplate(html,values) { |values|
-        inner_dispatch(req,values)[2]
+        inner_dispatch(req,values)[2].join("")
       }
       t = Time.now - s
       
