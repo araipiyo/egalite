@@ -10,6 +10,7 @@ class Session
     @cookies = cookies
     @cookie_name = opts[:cookie_name] || 'egalite_session'
     @expire_after = opts[:expire_after] || (86400 * 30)
+    @individual_expire = opts[:individual_expire]
     @secure = opts[:secure] || false
     @path = opts[:path] || '/'
     @hash = {}
@@ -42,7 +43,16 @@ class SessionSequel < Session
       primary_key :id, :integer, :auto_increment => true
       column :mac, :varchar
       column :updated_at, :timestamp
+      column :expire_sec, :integer    # 任意項目: 個別に有効期限設定可能
     }
+  end
+  def expire(t = nil)
+    t ||= Time.now
+    if @individual_expire and @hash and @hash[:expire_sec]
+      t + @hash[:expire_sec]
+    else
+      t + @expire_after
+    end
   end
 
   def initialize(env, cookies, opts = {}) 
@@ -54,7 +64,7 @@ class SessionSequel < Session
   def cookie
     {
       :value => @sstr,
-      :expires => Time.now + @expire_after,
+      :expires => expire,
       :path => @path,
       :secure => @secure
     }
@@ -75,7 +85,7 @@ class SessionSequel < Session
     
     # timeout check
     updated = rec[:updated_at]
-    return false if Time.now > (updated + @expire_after)
+    return false if Time.now > expire(updated)
     
     @sstr = _sstr
     @hash = rec

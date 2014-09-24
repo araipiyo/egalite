@@ -2,7 +2,7 @@ $LOAD_PATH << File.join(File.dirname(__FILE__), '..')
 
 require 'rubygems'
 require 'test/unit'
-require 'egalite'
+require 'lib/egalite/session'
 require 'sequel'
 
 require 'rack/test'
@@ -11,7 +11,9 @@ require 'setup'
 
 class SessionController < Egalite::Controller
   def login(id)
-    session.create(:user_id => id)
+    exp = nil
+    exp = params[:expire].to_i if params[:expire].to_i > 0
+    session.create(:user_id => id, :expire_sec => exp)
     redirect :action => :page
   end
   def page
@@ -40,7 +42,8 @@ class T_Session < Test::Unit::TestCase
     end
     Egalite::Handler.new(
       :db => db,
-      :session_handler => Egalite::SessionSequel
+      :session_handler => Egalite::SessionSequel,
+      :session_opts => {:individual_expire => true}
     )
   end
   def test_session
@@ -52,6 +55,9 @@ class T_Session < Test::Unit::TestCase
     assert last_response.redirect?
     assert last_response.headers['location'] == "/session/page"
     assert last_response.headers['set-cookie'] =~ /^egalite_session=[0-9]+_[0-9a-z]+;\s+/
+    last_response.headers['set-cookie'] =~ /expires=(.+?)(;|\Z|$)/
+    t = Time.parse($1)
+    assert t > (Time.now + 600)
     get "/session/page"
     assert last_response.ok?
     assert last_response.body =~ /9876/
@@ -79,5 +85,14 @@ class T_Session < Test::Unit::TestCase
     assert_raise(NotImplementedError) { session.load }
     assert_raise(NotImplementedError) { session.save }
     assert_raise(NotImplementedError) { session.delete }
+  end
+  def test_session_exp
+    get "/session/login/9876?expire=1"
+    last_response.headers['set-cookie'] =~ /expires=(.+?)(;|\Z|$)/
+    t = Time.parse($1)
+    assert last_response.redirect?
+    assert last_response.headers['location'] == "/session/page"
+    assert last_response.headers['set-cookie'] =~ /^egalite_session=[0-9]+_[0-9a-z]+;\s+/
+    assert t < (Time.now + 60)
   end
 end
