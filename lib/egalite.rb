@@ -29,6 +29,12 @@ class CriticalError < RuntimeError
 end
 
 module Egalite
+  class UserError < RuntimeError
+    # ユーザーの手順によるエラーを記録する。ログに残らない。
+  end
+  class SystemError < RuntimeError
+    # システムのエラーを記録する。ログに残る。
+  end
 
   module AccessLogger
    @@io = nil
@@ -389,7 +395,11 @@ class Handler
     
     @profile_logger = opts[:profile_logger]
     @notfound_template = opts[:notfound_template]
-    @error_template = opts[:error_template]
+    if opts[:error_template_file]
+      @error_template = File.open(opts[:error_template_file]).read
+    else
+      @error_template = opts[:error_template]
+    end
     @admin_emails = opts[:admin_emails]
     @exception_log_table = opts[:exception_log_table]
     if @exception_log_table
@@ -704,7 +714,7 @@ class Handler
       begin
         # write error log
         logid = nil
-        if @exception_log_table
+        if @exception_log_table and not e.is_a?(UserError)
           logid = ErrorLogger.write_exception(e,{:ipaddress => req.ip, :url => req.url})
         end
         
@@ -715,6 +725,8 @@ class Handler
           values[:logid] = logid if logid
           values[:exception] = e.to_s
           values[:backtrace] = e.backtrace
+          values[:message] = e.message if e.is_a?(UserError) or e.is_a?(SystemError)
+          values[:usererror] = true if e.is_a?(UserError)
           html = @template_engine.new.handleTemplate(@error_template.dup,values)
           res = [500, {"Content-type"=>"text/html; charset=utf-8"}, [html]]
         else
