@@ -91,34 +91,59 @@ module Egalite
   module ErrorLogger
    @@table = nil
    @@admin_emails = nil
+   @@email_from = nil
    class <<self
+    def create_table(db, opts = {})
+      table = opts[:table_name] || :logs
+      
+      db.create_table(table) {
+        primary_key :id, :integer, :auto_increment => true
+        column :severity, :varchar
+        column :ipaddress, :varchar
+        column :text, :varchar
+        column :url, :varchar
+        column :md5, :varchar
+        column :created_at, :timestamp
+        column :checked_at, :timestamp
+      }
+    end
     def table=(t)
       @@table=t
     end
     def admin_emails=(t)
       @@admin_emails=t
     end
-    def write(hash)
+    def email_from=(t)
+      @@email_from=t
+    end
+    def write(hash, sendmail = false)
       hash[:md5] = Digest::MD5.hexdigest(hash[:text]) unless hash[:md5]
-      if hash[:severity] == 'critical' and @@admin_emails
+      if (hash[:severity] == 'critical' or sendmail) and @@admin_emails
         Sendmail.send(hash[:text],{
-          :from => 'info@xcream.net',
+          :from => @@email_from || "egalite@example.com",
           :to => @@admin_emails,
-          :subject => 'Critical error at xcream.net'
+          :subject => "Exception report from Egalite framework."
         })
       end
       if @@table
         @@table.insert(hash) rescue nil
       end
     end
-    def write_exception(e, hash)
+    def write_exception(e, hash, sendmail = false)
       severity = 'exception'
       severity = 'security' if e.is_a?(SecurityError)
       severity = 'critical' if e.is_a?(CriticalError)
       
       text = "#{e.to_s}\n#{e.backtrace.join("\n")}"
       
-      ErrorLogger.write({:severity => severity, :text => text}.merge(hash))
+      ErrorLogger.write({:severity => severity, :text => text}.merge(hash),sendmail)
+    end
+    def catch_exception(sendmail = false, hash = {})
+      begin
+        yield
+      rescue Exception => e
+        ErrorLogger.write_exception(e, hash, sendmail)
+      end
     end
    end
   end
@@ -401,10 +426,12 @@ class Handler
       @error_template = opts[:error_template]
     end
     @admin_emails = opts[:admin_emails]
+    @email_from = opts[:email_from]
     @exception_log_table = opts[:exception_log_table]
     if @exception_log_table
       Egalite::ErrorLogger.table = db[@exception_log_table]
       Egalite::ErrorLogger.admin_emails = @admin_emails
+      Egalite::ErrorLogger.email_from = @email_from
     end
   end
 
