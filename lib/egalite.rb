@@ -92,6 +92,7 @@ module Egalite
    @@table = nil
    @@admin_emails = nil
    @@email_from = nil
+   @@do_not_catch = false
    class <<self
     def create_table(db, opts = {})
       table = opts[:table_name] || :logs
@@ -115,6 +116,9 @@ module Egalite
     end
     def email_from=(t)
       @@email_from=t
+    end
+    def do_not_catch=(t)
+      @@do_not_catch=t
     end
     def write(hash, sendmail = false)
       hash[:md5] = Digest::MD5.hexdigest(hash[:text]) unless hash[:md5]
@@ -143,6 +147,9 @@ module Egalite
         yield
       rescue Exception => e
         ErrorLogger.write_exception(e, hash, sendmail)
+        if @@do_not_catch
+          raise e
+        end
       end
     end
    end
