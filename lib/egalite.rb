@@ -223,7 +223,7 @@ class Controller
          "Last-Modified"  => File.mtime(path).rfc822,
          "Content-Type"   => content_type || MIME_TYPES[ext] || "text/plain",
          "Content-Length" => File.size(path).to_s
-       }, s]
+       }, [s]]
     else
       return [404, {"Content-Type" => "text/plain"}, ["File not found\n"]]
     end

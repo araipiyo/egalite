@@ -205,7 +205,11 @@ class HTMLTemplate
   public
   
   def escapeHTML(s)
-    s.to_s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+    if RUBY_VERSION < '1.9.0'
+      s.to_s.gsub(/&/n, '&amp;').gsub(/'/n,'&#039;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+    else
+      s.to_s.gsub(/&/, '&amp;').gsub(/'/,'&#039;').gsub(/\"/, '&quot;').gsub(/>/, '&gt;').gsub(/</, '&lt;')
+    end
   end
   
   def handleTemplate(html, orig_values, parent_params={}, &block)
