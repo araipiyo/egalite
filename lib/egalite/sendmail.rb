@@ -224,9 +224,11 @@ module Sendmail
     if dkim
       text = Dkim.sign(text,dkim_params)
     end
+    envelope_from = _extract_addrspec(params[:envelope_from] || params[:sender] || params[:from])
+    envelope_from = envelope_from[0] if envelope_from.is_a?(Array)
     _send(
       text,
-      _extract_addrspec(params[:envelope_from] || params[:sender] || params[:from]),
+      envelope_from,
       to_addresses(params),
       host
     )
