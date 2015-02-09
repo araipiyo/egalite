@@ -174,7 +174,9 @@ module Sendmail
     else
       headers["Content-Transfer-Encoding"] = "7bit"
     end
-    
+
+    params[:headers].each_pair { |k,v| headers[k] = v unless headers.key?(k)} if params.key?(:headers)
+
     text = [headers.map{|k,v| "#{k}: #{v}"}.join("\n"),body].join("\n\n")
   end
   private
