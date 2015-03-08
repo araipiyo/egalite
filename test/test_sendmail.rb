@@ -4,8 +4,6 @@ require 'test/unit'
 require 'lib/egalite/sendmail'
 require 'dkim'
 
-$KCODE = 'utf8'
-
 class T_Sendmail < Test::Unit::TestCase
   def test_folding
     s = Sendmail.folding('To', "012345678  \n\n  "*20)
@@ -56,7 +54,7 @@ class T_Sendmail < Test::Unit::TestCase
       assert e.size < 77
       assert_match /\A\s?\=\?UTF-8\?B\?(.+?)\?\=\Z/, e
       e =~ /\=\?UTF-8\?B\?(.+?)\?\=/
-      $1.unpack('m')[0]
+      $1.unpack('m')[0].force_encoding('UTF-8')
     }.join
     assert_equal 'あいうえお'*20, s2
   end
@@ -86,7 +84,7 @@ class T_Sendmail < Test::Unit::TestCase
   def test_message_multibyte
     s = Sendmail.message('あいうえお',:from=>'hoge@example.com')
     (h,b) = parse_message(s)
-    assert_equal 'あいうえお', b.unpack('m')[0]
+    assert_equal 'あいうえお', b.unpack('m')[0].force_encoding('UTF-8')
     assert_equal '1.0', h['MIME-Version']
     assert Time.rfc822(h['Date'])
     assert_equal 'base64', h['Content-Transfer-Encoding']
@@ -94,7 +92,7 @@ class T_Sendmail < Test::Unit::TestCase
   end
   def params
     {
-      :date => Time.local(0),
+      :date => Time.at(0),
       :from => 'hoge@example.com',
       :to   => [Sendmail.address('arai@example.com','新井俊一'),
                 ['tanaka@example.com','田中太郎'],
@@ -114,15 +112,15 @@ class T_Sendmail < Test::Unit::TestCase
     assert_raise(RuntimeError) { Sendmail.message('',{:from => [1,2,3]}) }
     s = Sendmail.message('あいうえお',params)
     (h,b) = parse_message(s)
-    assert_equal 'あいうえお', b.unpack('m')[0]
+    assert_equal 'あいうえお', b.unpack('m')[0].force_encoding('UTF-8')
     assert_equal '1.0', h['MIME-Version']
-    assert_equal Time.local(0), Time.rfc822(h['Date'])
+    assert_equal Time.at(0), Time.rfc822(h['Date'])
     assert_equal 'base64', h['Content-Transfer-Encoding']
     assert_equal 'text/plain; charset=UTF-8', h['Content-Type']
     assert_equal 'hoge@example.com', h['From']
     assert_match /\A\=\?UTF-8\?B\?(.+?)\?\=\n?\Z/, h['Subject']
     h['Subject'] =~ /\A\=\?UTF-8\?B\?(.+?)\?\=/
-    assert_equal 'こんにちは', $1.unpack('m')[0]
+    assert_equal 'こんにちは', $1.unpack('m')[0].force_encoding('UTF-8')
     to = h['To']
     tos = to.split(/\s*,\s+/)
     assert_match /\A\=\?UTF-8\?B\?(.+?)\?\= <arai@example.com>\Z/, tos[0]
@@ -130,7 +128,7 @@ class T_Sendmail < Test::Unit::TestCase
     assert_match /\A\=\?UTF-8\?B\?(.+?)\?\= <takeda@example.com>\Z/, tos[2]
     assert_match /\Aueno@example.com\Z/, tos[3]
     to =~ /\A\=\?UTF-8\?B\?(.+?)\?\=.+?\=\?UTF-8\?B\?(.+?)\?\=.+?\=\?UTF-8\?B\?(.+?)\?\=/
-    (a,b,c) = [$1,$2,$3].map { |s| s.unpack('m')[0] }
+    (a,b,c) = [$1,$2,$3].map { |s| s.unpack('m')[0].force_encoding('UTF-8') }
     assert_match '新井俊一', a
     assert_match '田中太郎', b
     assert_match '武田一郎', c

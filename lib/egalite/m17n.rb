@@ -136,9 +136,12 @@ module Egalite
         h2 = {}
         h.each { |k,v|
           h2[k] = case v
-            when String: t_string(list,v)
-            when Array: v.map { |x| t_hash(list,x) }
-            when Hash: t_hash(list, v)
+            when String
+              t_string(list,v)
+            when Array
+              v.map { |x| t_hash(list,x) }
+            when Hash
+              t_hash(list, v)
             else v
           end
         }
@@ -186,7 +189,7 @@ module Egalite
           end
         end
         string = string.dup
-        placeholders.each_with_index { |s2,i| string.gsub!(/\{#{i}\}/, s2) }
+        placeholders.split(/\n/).each_with_index { |s2,i| string.gsub!(/\{#{i}\}/, s2) }
         string
       end
     end

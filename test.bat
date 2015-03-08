@@ -1,2 +1,3 @@
 
-rcov -x rack test/*.rb
+ruby run_test.rb
+

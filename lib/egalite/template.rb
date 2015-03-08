@@ -106,11 +106,13 @@ class HTMLTemplate
       (colons, noncolons) = attr_colon(attrs)
       next s if colons.empty?
       # when :hoge=$foo, expand hash parameter ['foo']
+      c2 = colons.dup
       colons.each { |k,v|
         next if v[0,1] != '$'
         val = params[v[1..-1]]
-        colons[k] = val
+        c2[k] = val
       }
+      colons = c2
       colons = StringifyHash.create(colons)
       link = @controller.url_for(colons)
       "<a href='#{link}' #{noncolons}>"
@@ -160,8 +162,11 @@ class HTMLTemplate
     if block_given?
       html.gsub!(RE_INCLUDE) {
         attrs = parse_tag_attributes($1)
-        attrs.each { |k,v| attrs[k[1..-1]] = v if k =~ /^\:/ }
-        yield(attrs)
+        new_attrs = attrs.dup
+        attrs.each { |k,v| 
+          new_attrs[k[1..-1]] = v if k =~ /^\:/
+        }
+        yield(new_attrs)
       }
       parent = nil
       md = RE_PARENT.match(html)

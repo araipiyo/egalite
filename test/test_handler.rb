@@ -47,9 +47,12 @@ end
 class BeforefilterController < TestController
   def before_filter
     case params[:test]
-      when /notfound/: notfound
-      when /delegate/: delegate(:controller => :test,:action => :test)
-      when /forbidden/: false
+      when /notfound/
+        notfound
+      when /delegate/
+        delegate(:controller => :test,:action => :test)
+      when /forbidden/
+        false
       else redirect(:action => :test)
     end
   end
