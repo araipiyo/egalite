@@ -27,6 +27,8 @@ require 'resolv'
 # 4. hash: { "Hoge Taro" => "hoge@example.com" }
 
 module Sendmail
+ class AttachmentsTooLarge < RuntimeError
+ end
  class QualifiedMailbox < String
  end
  @force_dkim = false
@@ -166,9 +168,12 @@ module Sendmail
     headers["MIME-Version"] = "1.0"
     date = params[:date] || Time.now
     headers["Date"] = date.is_a?(Time) ? date.rfc822 : date
-    headers["Content-Type"] = "text/plain; charset=UTF-8"
+    headers["Content-Type"] = params[:content_type]
+    headers["Content-Type"] ||= "text/plain; charset=UTF-8"
     
-    if multibyte?(body)
+    if params[:content_type] =~ /multipart/
+      body = body
+    elsif multibyte?(body)
       headers["Content-Transfer-Encoding"] = "base64"
       body = [body].pack('m')
     else
@@ -241,6 +246,23 @@ module Sendmail
   def send_with_dkim(body, params, host = 'localhost', dkim_params = {})
     send_inner_2(body, params, host, true, dkim_params)
   end
+  def send_multipart(parts, params, host = 'localhost')
+    (body, content_type) = mime_combine(parts)
+    params[:content_type] = content_type
+    send_inner_2(body, params, host, @force_dkim, {})
+  end
+  def send_with_uploaded_files(body, files, params, host = 'localhost')
+    # files should be Rack uploaded files.
+    sum_size = 0
+    parts = [mime_part(body)]
+    parts += files.map { |f|
+      binary = f[:tempfile].read
+      sum_size += binary.size
+      raise AttachmentsTooLarge if sum_size >= 25 * 1000 * 1000
+      mime_part(binary, f[:type], f[:filename])
+    }
+    send_multipart(parts, params, host)
+  end
   def send_with_template(filename, params, host = 'localhost')
     File.open("mail/"+ filename ,"r") { |f|
       text = f.read
@@ -265,5 +287,50 @@ module Sendmail
     return true if aaaa
     false
   end
+  
+  #
+  # create MIME multipart
+  #
+  
+  def mime_combine(parts, type = "mixed")
+    boundary = OpenSSL::Random.random_bytes(10).unpack('h*')[0]
+    content_type = "multipart/#{type}; boundary=\"#{boundary}\""
+    
+    body = ""
+    parts.each { |part|
+      body << "--" + boundary
+      body << "\n"
+      body << part
+    }
+    body << "--" + boundary
+    body << "--\n"
+    [body, content_type]
+  end
+  def mime_header(header,s)
+    if multibyte?(s)
+      header + '"' + multibyte_folding(header, s) + '"'
+    else
+      header + folding(header, quote_string(s))
+    end
+  end
+  def mime_part(body, content_type = nil, filename = nil)
+    content_type = "text/plain; charset=UTF-8" unless content_type
+    part = ""
+    if filename
+      part << "Content-Type: #{content_type};\n"
+      part << mime_header(" name=", filename)
+      part << "\n"
+      part << "Content-Disposition: attachment;\n"
+      part << mime_header(" filename=", filename)
+      part << "\n"
+      part << "Content-Transfer-Encoding: base64\n"
+    else
+      part << "Content-Type: #{content_type}\n"
+      part << "Content-Transfer-Encoding: base64\n"
+    end
+    part << "\n"
+    part << [body].pack('m')
+  end
+  
  end
 end

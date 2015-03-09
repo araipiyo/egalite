@@ -181,5 +181,27 @@ EOS
     assert_equal false, Sendmail.verify_address("test@example.jp")
     assert_equal true, Sendmail.verify_address("test@example.com")
   end
+  def test_attachment
+    Sendmail.mock = true
+    Sendmail.force_dkim = false
+    tf = Tempfile.open("z")
+    tf.print "piyo"
+    tf.rewind
+    file = {
+      :filename => File.basename("test/static/test.txt"),
+      :type => "text/plain",
+      :name => "test.txt",
+      :tempfile => tf,
+      :head => "Content-Disposition: form-data; name=\"test.txt\"; filename=\"#{File.basename("test/static/test.txt")}\"\r\n" +
+               "Content-Type: text/plain\r\n" +
+               "Content-Length: 4\r\n"
+    }
+    Sendmail.send_with_uploaded_files("test",[file],:from => "arai@example.com", :to => "to@example.com")
+    Sendmail.lastmail[0] =~ /boundary="(.+?)"/
+    boundary = $1
+    assert_match "dGVzdA==", Sendmail.lastmail[0]
+    assert_match "cGl5bw==", Sendmail.lastmail[0]
+    assert_match "--#{boundary}--", Sendmail.lastmail[0]
+  end
 end
 

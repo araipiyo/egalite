@@ -190,3 +190,9 @@ UserErrorとSystemError例外が追加されました。これによりユーザ
 ### 1.5.1
 
 Egalite::ErrorLogger.catch_exception(sendmail) {}が追加されました。これを使うと、任意のブロックで発生した例外をキャッチして、管理者へのメール送信やログの出力を行います。重要なエラーが発生する可能性がある場所への利用に適しています。
+
+## 1.5.6
+
+Sendmailに添付ファイルを送信するためのメソッド二つが追加されました。send_with_uploaded_filesとsend_multipartです。send_with_uploaded_filesは、HTMLフォームで送信されたファイルを指定するだけでそのまま送信することができます。
+
+testがRuby 2.1で動くようになり、Ruby 1.8.7では動かなくなりました。
