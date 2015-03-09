@@ -254,6 +254,7 @@ module Sendmail
   def send_with_uploaded_files(body, files, params, host = 'localhost')
     # files should be Rack uploaded files.
     sum_size = 0
+    files = [files].flatten
     parts = [mime_part(body)]
     parts += files.map { |f|
       binary = f[:tempfile].read
