@@ -14,6 +14,7 @@ require 'setup'
 class TestController < Egalite::Controller
   def parameters
     raise "param foo is not bar: #{params[:foo].inspect}" unless params[:foo] == 'bar'
+    raise "param array isnt okay: #{params["array"].inspect}" unless params["array"] == ["1","2"] or params["array"] == ["2","1"]
     raise "param hash isnt okay: #{params[:hash].inspect}" unless params[:hash][:a] == '1' and params[:hash][:b] == '2'
     "okay"
   end
@@ -78,7 +79,7 @@ class T_Handler < Test::Unit::TestCase
     assert_no_match /private!/, last_response.body
   end
   def test_parameters
-    post("/test/parameters", {'foo' => 'bar', 'hash[a]' => '1', 'hash[b]' => '2'})
+    post("/test/parameters", {'foo' => 'bar', 'hash[a]' => '1', 'hash[b]' => '2', 'array[]' => ['1','2']})
     assert last_response.ok?
     assert last_response.body =~ /okay/
     assert last_response.content_type =~ /text\/html/i

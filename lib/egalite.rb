@@ -16,15 +16,6 @@ require 'time'
 require 'monitor'
 require 'digest/md5'
 
-module Rack
-  module Utils
-    def normalize_params(params,name,v)
-      params[name] = v
-    end
-    module_function :normalize_params
-  end
-end
-
 class CriticalError < RuntimeError
 end
 
@@ -688,6 +679,20 @@ class Handler
     res
   end
 
+private
+  def stringify_hash(params)
+    sh = StringifyHash.new
+    params.each { |k,v|
+      if v.is_a?(Hash)
+        sh[k] = stringify_hash(v)
+      else
+        sh[k] = v
+      end
+    }
+    sh
+  end
+public
+
   def call(rack_env)
     # set up logging
     
@@ -703,19 +708,7 @@ class Handler
       )
 
       # parameter handling
-      params = StringifyHash.new
-      req.params.each { |k,v|
-#        raise 'egalite: no multiple query parameter allowed in same keyword.' if v.is_a?(Array)
-         next unless k
-         frags = k.split(/[\]\[]{1,2}/)
-         last = frags.pop
-         list = params
-         frags.each { |frag|
-           list[frag] ||= StringifyHash.new
-           list = list[frag]
-         }
-         list[last] = v
-      }
+      params = stringify_hash(req.params)
 
       puts "before-cookie: #{req.cookies.inspect}" if @opts[:cookie_debug]
       
