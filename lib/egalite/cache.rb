@@ -48,7 +48,7 @@ module Egalite
     end
     def before_filter
       cache = self.class.controller_cache_actions[req.action_method]
-      if cache
+      if cache and Egalite::ControllerCache.table
         result = super
         if result != true
           return result
@@ -64,7 +64,8 @@ module Egalite
     end
     def after_filter_html(html)
       html = super(html)
-      if self.class.controller_cache_actions[req.action_method]
+      cache = self.class.controller_cache_actions[req.action_method]
+      if cache and Egalite::ControllerCache.table
         dataset = __controller_cache__dataset
         data = {
           :inner_path => req.inner_path,
