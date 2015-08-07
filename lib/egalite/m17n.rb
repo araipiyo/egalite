@@ -189,7 +189,8 @@ module Egalite
           end
         end
         string = string.dup
-        placeholders.split(/\n/).each_with_index { |s2,i| string.gsub!(/\{#{i}\}/, s2) }
+        placeholders = placeholders.split(/\n/) unless placeholders.is_a?(Array)
+        placeholders.each_with_index { |s2,i| string.gsub!(/\{#{i}\}/, s2) }
         string
       end
     end
