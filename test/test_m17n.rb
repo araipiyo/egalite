@@ -1,3 +1,5 @@
+$LOAD_PATH << File.join(File.dirname(__FILE__), '../lib/')
+
 require 'rubygems'
 require 'test/unit'
 require 'egalite'
@@ -107,6 +109,10 @@ class T_Translation < Test::Unit::TestCase
     assert_no_match  /I am an English man\./, last_response.body
 
     get "/french/dlg", {}, {'HTTP_ACCEPT_LANGUAGE' => 'fr-fr'}
+    assert_match  /@@@Je suis un Francais\.@@@/, last_response.body
+    assert_no_match  /I am an English man\./, last_response.body
+
+    get "/french/dlg", {}, {'HTTP_ACCEPT_LANGUAGE' => 'fr_fr'}
     assert_match  /@@@Je suis un Francais\.@@@/, last_response.body
     assert_no_match  /I am an English man\./, last_response.body
   end

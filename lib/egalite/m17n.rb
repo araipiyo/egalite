@@ -162,7 +162,7 @@ module Egalite
         @langcode == lang or @aliases.include?(lang)
       end
       def partialmatch?(lang)
-        fullmatch?(lang.to_s.split(/-/).first)
+        fullmatch?(lang.to_s.split(/(-|_)/).first)
       end
       def translate_html(path, html)
         return html unless @data
