@@ -129,9 +129,9 @@ class T_Handler < Test::Unit::TestCase
     post "/test/location", {:url => "http://example.com/test"}
     assert last_response.redirect?
     assert_equal "http://example.com/test", last_response.headers['location']
-    post "/test/location", {:url => "/foo\nbar"}
+    post "/test/location", {:url => "/foo\r\nbar"}
     assert last_response.redirect?
-    assert_equal "/foo%0Abar", last_response.headers['location']
+    assert_equal "/foo%0D%0Abar", last_response.headers['location']
   end
   def test_accesslog
     io = StringIO.new
