@@ -257,10 +257,12 @@ module Sendmail
     files = [files].flatten
     parts = [mime_part(body)]
     parts += files.map { |f|
-      binary = f[:tempfile].read
-      sum_size += binary.size
-      raise AttachmentsTooLarge if sum_size >= 25 * 1000 * 1000
-      mime_part(binary, f[:type], f[:filename])
+      File.open(f[:tempfile].path, "r") {|tf|
+        binary = tf.read
+        sum_size += binary.size
+        raise AttachmentsTooLarge if sum_size >= 25 * 1000 * 1000
+        mime_part(binary, f[:type], f[:filename])
+      }
     }
     send_multipart(parts, params, host)
   end
