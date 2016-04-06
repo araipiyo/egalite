@@ -455,7 +455,7 @@ class Handler
     end
   end
   def redirect(url)
-    [302,{'Location' => url}, [url]]
+    [302,{'Location' => URI.escape(url)}, [url]]
   end
   def get_controller(controllername,action, method)
     action = method if action.blank?

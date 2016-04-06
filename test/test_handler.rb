@@ -40,6 +40,9 @@ class TestController < Egalite::Controller
     @log_values = [1,2,3]
     "accesslog"
   end
+  def location
+    redirect params[:url]
+  end
   private
   def priv
     "private!"
@@ -118,6 +121,17 @@ class T_Handler < Test::Unit::TestCase
     get "/test/ipaddr"
     assert last_response.ok?
     assert last_response.body =~ /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/
+  end
+  def test_redirect
+    post "/test/location", {:url => "/test"}
+    assert last_response.redirect?
+    assert_equal "/test", last_response.headers['location']
+    post "/test/location", {:url => "http://example.com/test"}
+    assert last_response.redirect?
+    assert_equal "http://example.com/test", last_response.headers['location']
+    post "/test/location", {:url => "/foo\nbar"}
+    assert last_response.redirect?
+    assert_equal "/foo%0Abar", last_response.headers['location']
   end
   def test_accesslog
     io = StringIO.new
