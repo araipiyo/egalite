@@ -5,6 +5,7 @@
 CREATE TABLE controller_cache (
   id SERIAL PRIMARY KEY,
   inner_path TEXT NOT NULL,
+  query_string TEXT,
   language TEXT,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   content TEXT NOT NULL
@@ -22,6 +23,7 @@ module Egalite
         db.create_table(table) {
           primary_key :id, :integer, :auto_increment => true
           column :inner_path, :varchar
+          column :query_string, :varchar
           column :language, :varchar
           column :updated_at, :timestamp
           column :content, :varchar
@@ -38,13 +40,18 @@ module Egalite
     def self.included(base)
       base.extend(ClassMethods)
     end
-    def __controller_cache__dataset
+    def __controller_cache__dataset(options)
       table = Egalite::ControllerCache.table
       dataset = table.filter(:inner_path => req.inner_path)
+      dataset = dataset.filter(:query_string => __query_string(options))
       if req.language
         dataset = dataset.filter(:language => req.language)
       end
       dataset
+    end
+    def __query_string(options)
+      return nil unless options[:with_query] and not req.rack_request.query_string.empty?
+      req.rack_request.query_string
     end
     def before_filter
       cache = self.class.controller_cache_actions[req.action_method]
@@ -53,7 +60,7 @@ module Egalite
         if result != true
           return result
         end
-        dataset = __controller_cache__dataset
+        dataset = __controller_cache__dataset(cache)
         record = dataset.first
         return true unless record
         return true if record[:updated_at] < (Time.now - cache[:expire])
@@ -66,9 +73,10 @@ module Egalite
       html = super(html)
       cache = self.class.controller_cache_actions[req.action_method]
       if cache and Egalite::ControllerCache.table
-        dataset = __controller_cache__dataset
+        dataset = __controller_cache__dataset(cache)
         data = {
           :inner_path => req.inner_path,
+          :query_string => __query_string(cache),
           :language => req.language,
           :updated_at => Time.now,
           :content => html,
@@ -83,4 +91,3 @@ module Egalite
     end
   end
 end
-
