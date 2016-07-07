@@ -108,18 +108,26 @@ class T_Cache < Test::Unit::TestCase
     get "/test/cachewithquery?a=1"
     b = last_response.body
     assert_equal a,b
+    sleep 2
+    get "/test/cachewithquery?a=1"
+    c = last_response.body
+    assert_not_equal a,c
 
     # test cache is not working for different url
     get "/test/cachewithquery?a=1"
     a = last_response.body
     sleep 0.1
-    get "/test/cachewithquery?a=2"
+    get "/test/cachewithquery"
     b = last_response.body
     assert_not_equal a,b
     sleep 0.1
-    get "/test/cachewithquery?a=1&b=2"
+    get "/test/cachewithquery?a=2"
     c = last_response.body
     assert_not_equal a,c
+    sleep 0.1
+    get "/test/cachewithquery?a=1&b=2"
+    d = last_response.body
+    assert_not_equal a,d
   end
 end
 
