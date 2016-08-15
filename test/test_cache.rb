@@ -25,6 +25,19 @@ class TestCacheController < Egalite::Controller
   end
 end
 
+class TestCachewithqueryController < Egalite::Controller
+  include Egalite::ControllerCache
+
+  cache_action :get, :expire => 1, :with_query => true
+
+  def get
+    "#{Time.now.to_i}.#{Time.now.usec}"
+  end
+  def nocache
+    "#{Time.now.to_i}.#{Time.now.usec}"
+  end
+end
+
 class CacheController < Egalite::Controller
   include Egalite::ControllerCache
   
@@ -38,6 +51,47 @@ class CacheController < Egalite::Controller
   end
   def nocache
     {:time => "#{Time.now.to_i}.#{Time.now.usec}"}
+  end
+end
+
+# compatibility test
+class T_CacheWithoutQuery < Test::Unit::TestCase
+  include Rack::Test::Methods
+  
+  def app
+    db = Sequel.sqlite
+    Egalite::ControllerCache.create_table_without_query(db)
+    Egalite::ControllerCache.table = db[:controller_cache]
+    Egalite::Handler.new
+  end
+  def test_cache
+    # test cache is not working
+    get "/test/cache/nocache"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cache/nocache"
+    b = last_response.body
+    assert_not_equal a,b
+    
+    # test cache is working
+    get "/test/cache/"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cache/"
+    b = last_response.body
+    assert_equal a,b
+    sleep 2
+    get "/test/cache/"
+    c = last_response.body
+    assert_not_equal a,c
+    
+    # test cache is not working for different url
+    get "/test/cache/1"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cache/2"
+    b = last_response.body
+    assert_not_equal a,b
   end
 end
 
@@ -78,6 +132,43 @@ class T_Cache < Test::Unit::TestCase
     get "/test/cache/2"
     b = last_response.body
     assert_not_equal a,b
+  end
+  def test_cache_with_query
+    # test cache is not working
+    get "/test/cachewithquery/nocache"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cachewithquery/nocache"
+    b = last_response.body
+    assert_not_equal a,b
+
+    # test cache is working
+    get "/test/cachewithquery?a=1"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cachewithquery?a=1"
+    b = last_response.body
+    assert_equal a,b
+    sleep 2
+    get "/test/cachewithquery?a=1"
+    c = last_response.body
+    assert_not_equal a,c
+
+    # test cache is not working for different url
+    get "/test/cachewithquery?a=1"
+    a = last_response.body
+    sleep 0.1
+    get "/test/cachewithquery"
+    b = last_response.body
+    assert_not_equal a,b
+    sleep 0.1
+    get "/test/cachewithquery?a=2"
+    c = last_response.body
+    assert_not_equal a,c
+    sleep 0.1
+    get "/test/cachewithquery?a=1&b=2"
+    d = last_response.body
+    assert_not_equal a,d
   end
 end
 
