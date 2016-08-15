@@ -20,10 +20,17 @@ module Egalite
       def create_table(db, opts = {})
         table = opts[:table_name] || :controller_cache
         
+        create_table_without_query(db, opts)
+        db.alter_table(table) {
+          add_column :query_string, :varchar
+        }
+      end
+      def create_table_without_query(db, opts = {})
+        table = opts[:table_name] || :controller_cache
+        
         db.create_table(table) {
           primary_key :id, :integer, :auto_increment => true
           column :inner_path, :varchar
-          column :query_string, :varchar
           column :language, :varchar
           column :updated_at, :timestamp
           column :content, :varchar
@@ -43,7 +50,9 @@ module Egalite
     def __controller_cache__dataset(options)
       table = Egalite::ControllerCache.table
       dataset = table.filter(:inner_path => req.inner_path)
-      dataset = dataset.filter(:query_string => __query_string(options))
+      if options[:with_query]
+        dataset = dataset.filter(:query_string => __query_string(options))
+      end
       if req.language
         dataset = dataset.filter(:language => req.language)
       end
@@ -76,11 +85,13 @@ module Egalite
         dataset = __controller_cache__dataset(cache)
         data = {
           :inner_path => req.inner_path,
-          :query_string => __query_string(cache),
           :language => req.language,
           :updated_at => Time.now,
           :content => html,
         }
+        if cache[:with_query]
+          data[:query_string] = __query_string(cache)
+        end
         if dataset.count > 0
           dataset.update(data)
         else
