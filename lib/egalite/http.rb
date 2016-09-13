@@ -37,9 +37,7 @@ module Egalite
     def self.get(url, options = {})
       params = options[:params]
       if params.is_a?(Hash)
-        params = params.map { |k,v|
-          "#{k}=#{v}"
-        }.join("&")
+        params = URI.encode_www_form(params)
       end
       if params.is_a?(String)
         if url =~ /\?/
@@ -57,9 +55,7 @@ module Egalite
     def self.post(url, body = nil, options = {})
       uri = parse_url(url,options)
       if body.is_a?(Hash)
-        body = body.map { |k,v|
-          "#{k}=#{v}"
-        }.join("&")
+        body = URI.encode_www_form(body)
       end
       parse_options(options)
       (http, uri) = parse_url(url, options)
