@@ -200,7 +200,7 @@ class Controller
     EgaliteResponse.new(:delegate, params)
   end
   def include(params)
-    raw(req.handler.inner_dispatch(req, params)[2].to_s)
+    raw(req.handler.inner_dispatch(req, params)[2].join)
   end
   def send_file(path, content_type = nil)
     ext = File.extname(path)[1..-1]
