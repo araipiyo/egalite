@@ -11,6 +11,21 @@ module Egalite
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
+      if options[:continue_timeout]
+        http.continue_timeout = options[:continue_timeout]
+      end
+      if options[:keep_alive_timeout]
+        http.keep_alive_timeout = options[:keep_alive_timeout]
+      end
+      if options[:open_timeout]
+        http.open_timeout = options[:open_timeout]
+      end
+      if options[:read_timeout]
+        http.read_timeout = options[:read_timeout]
+      end
+      if options[:ssl_timeout]
+        http.ssl_timeout = options[:ssl_timeout]
+      end
       [http, uri]
     end
     def self.parse_options(options)
