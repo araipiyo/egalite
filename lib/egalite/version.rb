@@ -1,3 +1,3 @@
 module Egalite
-  VERSION = "1.5.16"
+  VERSION = "1.5.17"
 end
