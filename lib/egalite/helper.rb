@@ -191,10 +191,10 @@ class FormHelper
   end
   def radio(name, choice, opts = {})
     selected = (@data[name] == choice)
-    selected = (opts[:default] == choice) || opts[:selected] if @data[name] == nil
+    selected = (opts[:default] == choice) || opts[:selected] || opts[:checked] if @data[name] == nil
     
     attrs = opt_as_hash(opts)
-    attrs[:selected] = 'selected' if selected
+    attrs[:checked] = 'checked' if selected
     attrs[:name] = expand_name(name)
     attrs[:value] = choice
     attrs[:type] = 'radio'
