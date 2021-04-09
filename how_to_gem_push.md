@@ -5,6 +5,8 @@ Egaliteを更新する方法を以下に書きます。
 
 必要な修正を加えたら、まずlib/egalite/version.rbを書き換えてバージョン番号を上げます。Gemを差し替えるのにバージョンを上げる必要があるので。
 
+次にgit commit, pushを行います。
+
 gem build egalite.gemspec
 を実行するとegalite-x.x.xx.gemが作成されます。
 
