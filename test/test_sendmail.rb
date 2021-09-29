@@ -203,5 +203,11 @@ EOS
     assert_match "cGl5bw==", Sendmail.lastmail[0]
     assert_match "--#{boundary}--", Sendmail.lastmail[0]
   end
+  def test_override_server
+    Sendmail.override_server = "example.com"
+    Sendmail.send("Hello",:from => "arai@example.com", :to => "to@example.com")
+    assert_match "example.com", Sendmail.lastmail[3]
+    Sendmail.override_server = nil
+  end
 end
 

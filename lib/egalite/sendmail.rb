@@ -33,8 +33,9 @@ module Sendmail
  end
  @force_dkim = false
  @mock = false
+ @override_server = nil
  class <<self
-  attr_accessor :mock, :force_dkim
+  attr_accessor :mock, :force_dkim, :override_server
   attr_reader :lastmail
   def folding(h, s) # folding white space. see RFC5322, section 2.3.3 and 3.2.2.
     len = 78 - h.size - ": ".size
@@ -233,6 +234,7 @@ module Sendmail
     end
     envelope_from = _extract_addrspec(params[:envelope_from] || params[:sender] || params[:from])
     envelope_from = envelope_from[0] if envelope_from.is_a?(Array)
+    host = @override_server if host == 'localhost' and @override_server
     _send(
       text,
       envelope_from,
