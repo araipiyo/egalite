@@ -205,7 +205,7 @@ class T_FormHelper < Test::Unit::TestCase
     assert_equal("Foo", i.attributes["value"])
     assert_equal("radio", i.attributes["type"])
     assert_equal("foo", i.attributes["name"])
-    assert_equal("selected", i.attributes["selected"])
+    assert_equal("checked", i.attributes["checked"])
   end
 
   def test_radio_should_not_be_checked_if_choice_mismatch
