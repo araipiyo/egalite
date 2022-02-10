@@ -45,6 +45,9 @@ class RouteController < Egalite::Controller
   def get(s)
     s ? s : "null"
   end
+  def head(s)
+    s ? s : "null"
+  end
   def pathtest
     req.path_info
   end
@@ -194,5 +197,8 @@ class T_Route < Test::Unit::TestCase
     get "/route/-"
     assert last_response.ok?
     assert last_response.body == "-"
+    get "/route/head"
+    assert last_response.ok?
+    assert last_response.body == "head"
   end
 end
