@@ -191,5 +191,8 @@ class T_Route < Test::Unit::TestCase
     get "/route/get"
     assert last_response.ok?
     assert last_response.body == "get"
+    get "/route/-"
+    assert last_response.ok?
+    assert last_response.body == "-"
   end
 end

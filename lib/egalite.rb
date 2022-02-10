@@ -475,7 +475,8 @@ class Handler
     controllername ||= ''
     controllername = controllername.split('/').map { |c|
       c.downcase!
-      c.gsub!(/[^0-9a-z]/,'')
+      # 英数字以外が含まれるものはコントローラーとはみなさない。
+      return nil if c =~ /[^0-9a-z]/
       c.capitalize
     }.join
     controllername = 'Default' if controllername.blank?
