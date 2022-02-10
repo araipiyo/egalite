@@ -459,6 +459,11 @@ class Handler
     [302,{'Location' => url}, [url]]
   end
   def get_controller(controllername,action, method)
+    # HTTPメソッドと一致するアクション名は却下する(メソッド名で受け付けるべき)
+      # /controller/get みたいな名前でgetがパスパラメータとして渡るべき
+      # といいつつ後方互換性を考慮してとりあえずget/postだけ却下
+    return nil if %w[get post].include?(action&.downcase)
+    
     action = method if action.blank?
     action.downcase!
     action.gsub!(/[^0-9a-z_]/,'')

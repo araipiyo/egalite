@@ -188,5 +188,8 @@ class T_Route < Test::Unit::TestCase
     get "/NoControllerNoAction2"
     assert last_response.ok?
     assert last_response.body == "/route/pathtest"
+    get "/route/get"
+    assert last_response.ok?
+    assert last_response.body == "get"
   end
 end
