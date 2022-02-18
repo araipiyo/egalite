@@ -469,8 +469,7 @@ class Handler
     action.gsub!(/[^0-9a-z_]/,'')
     
     return nil if action == ""
-    
-    Controller.new.methods.each { |s| raise SecurityError if action == s }
+    Controller.new.methods.each { |s| return nil if action.downcase == s.to_s }
     
     controllername ||= ''
     controllername = controllername.split('/').map { |c|

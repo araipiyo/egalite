@@ -200,5 +200,8 @@ class T_Route < Test::Unit::TestCase
     get "/route/head"
     assert last_response.ok?
     assert last_response.body == "head"
+    get "/route/tap"
+    assert last_response.ok?
+    assert last_response.body == "tap"
   end
 end
